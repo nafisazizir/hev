@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-Orientation for a fresh Claude Code session on this repo. Read this, then PLAN.md, then whichever doc the current milestone points at.
+Orientation for any agent or contributor starting a fresh session on this repo. Read this, then PLAN.md, then whichever doc the current milestone points at.
 
 ## What this is
 
