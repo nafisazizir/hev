@@ -1,0 +1,23 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# training outputs (each run is a directory; keep results ledgers, not weights)
+runs/*/
+!runs/.gitkeep
+*.safetensors
+*.pt
+*.bin
+
+# hf / datasets caches
+.cache/
+hf_cache/
+
+# scratch
+.ideas/*.png
+.DS_Store
