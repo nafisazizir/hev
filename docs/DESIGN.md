@@ -57,7 +57,7 @@ Position ids are 0…S-1 for the state. Each question's instruction branch resta
 
 The hidden state at option j's `</opt>` token is a deterministic function of the token ids and positions it can attend to, transitively. By the mask and position rules those are: the state tokens at positions 0…S-1, the instruction tokens at S…S+I_k-1, and option j's own tokens at S+I_k…. None of these depend on which other options exist or where option j sits in the list. Therefore `h(option j)` is invariant to option order and to the presence of siblings.
 
-Tested mechanically in `tests/test_model.py::test_option_hidden_state_is_independent_of_siblings` with a random backbone: the vector for "alpha" is identical whether it is first of three or second of two, to 1e-5.
+Tested mechanically in `tests/test_model.py::test_option_hidden_state_invariance` with a random backbone: the vector for "alpha" is identical whether it is first of three or second of two, to 1e-5.
 
 Floating-point note: attention sums over the same key set in a different physical order, so results agree to roughly 1e-6 in fp32 rather than bit-exactly. That is the tolerance the tests use.
 
@@ -73,7 +73,7 @@ Temperature scaling is a single scalar fit on the calibration split after traini
 
 ## Score questions and order
 
-Ordinal levels are ordered by meaning, so for `score` questions order is information, not a nuisance. A learned level embedding `E[j]` is added to `h_opt_j` before the readout, for score questions only. It is zero-initialised so a fresh model is invariant everywhere and learns to break invariance only where the labels reward it. `tests/test_model.py::test_score_levels_are_order_aware` checks that a nonzero embedding does change the answer under reversal.
+Ordinal levels are ordered by meaning, so for `score` questions order is information, not a nuisance. A learned level embedding `E[j]` is added to `h_opt_j` before the readout, for score questions only. It is zero-initialised so a fresh model is invariant everywhere and learns to break invariance only where the labels reward it. `tests/test_model.py::test_score_levels_break_invariance` checks that a nonzero embedding does change the answer under reversal.
 
 Choice and noul get no index signal anywhere. Noul's `[no, yes]` order is fixed by the API, so the readout distinguishes them by text alone.
 

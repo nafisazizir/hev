@@ -12,7 +12,7 @@ Full design: [docs/DESIGN.md](docs/DESIGN.md). Illustrated walkthrough with the 
 
 ## Status
 
-Scaffold. The model, mask, readout heads and API schema exist and are covered by offline unit tests that prove the invariance mechanically on a tiny random backbone. Nothing has been trained yet. See PLAN.md for the next milestone.
+M1 complete. The model, mask and readout heads are covered by offline architectural tests; the pinned Qwen3 tokenizer passes the Hub context-limit checks; and both PointerHead and SetHead have immutable MPS smoke checkpoints with decreasing fixed-set loss, complete development evaluation and zero permutation flips. Smoke accuracy is a pipeline check, not a research result. See PLAN.md for linked artifacts and M2.
 
 ## Layout
 
@@ -35,6 +35,18 @@ Requires [uv](https://docs.astral.sh/uv/). Tested on Apple Silicon (MPS); CUDA p
 uv sync --group dev
 uv run pytest            # offline, ~10s
 ```
+
+Hub and M1 smoke commands:
+
+```bash
+HEV_HUB_TESTS=1 uv run pytest tests/test_hub.py -v
+uv run python -m hev.train --suite evals/smoke-v1 --out runs/smoke-pointer-s0 --head pointer --device mps --seed 0 --epochs 5 --lr 2e-4 --lora 16 --batch 1 --accum 4 --require-loss-decrease
+uv run python -m hev.evaluate --run runs/smoke-pointer-s0 --suite evals/smoke-v1 --device mps --seed 1 --permutations 6
+uv run python -m hev.train --suite evals/smoke-v1 --out runs/smoke-set-s0 --head set --device mps --seed 0 --epochs 5 --lr 2e-4 --lora 16 --batch 1 --accum 4 --require-loss-decrease
+uv run python -m hev.evaluate --run runs/smoke-set-s0 --suite evals/smoke-v1 --device mps --seed 1 --permutations 6
+```
+
+Run directories and evaluation artifacts are immutable. Choose new `--out` paths for reruns; failed artifacts are preserved.
 
 ## Comparing against kev and Jev
 

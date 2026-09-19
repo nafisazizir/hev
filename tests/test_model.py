@@ -104,7 +104,7 @@ def _perm_probs(model, tok, options, qtype="choice", trials=6, seed=0):
 
 
 @pytest.mark.parametrize("head", ["pointer", "set"])
-def test_option_order_does_not_change_probabilities(models, tok, head):
+def test_option_order_invariance(models, tok, head):
     """Reorder the options: the returned distribution must be the same distribution, permuted. This is the
     property kev measures (7% argmax flips) and hev enforces by construction."""
     options = ["returns: exchanges and refunds", "shipping: delays", "billing: charges", "other", "weather"]
@@ -114,7 +114,7 @@ def test_option_order_does_not_change_probabilities(models, tok, head):
         assert torch.allclose(p_noul, base[1], atol=1e-5)
 
 
-def test_option_hidden_state_is_independent_of_siblings(models, tok):
+def test_option_hidden_state_invariance(models, tok):
     """Stronger than the probability test: the backbone vector of an option does not change when siblings change."""
     m = models["pointer"]
     e1 = encode(tok, rec(q("which?", ["alpha", "beta", "gamma"])))
@@ -125,7 +125,7 @@ def test_option_hidden_state_is_independent_of_siblings(models, tok):
     assert torch.allclose(h1, h2, atol=1e-5)
 
 
-def test_questions_are_isolated(models, tok):
+def test_sibling_question_invariance(models, tok):
     """kev's property, preserved: a sibling question cannot change this question's answer."""
     m = models["pointer"]
     a = encode(tok, rec(q("which?", ["x", "y"]), q("secret is 42?", ["no", "yes"], "noul")))
@@ -133,7 +133,7 @@ def test_questions_are_isolated(models, tok):
     assert torch.allclose(m.probs(a)[0], m.probs(b)[0], atol=1e-5)
 
 
-def test_score_levels_are_order_aware(models, tok):
+def test_score_levels_break_invariance(models, tok):
     """For Score questions order is meaning, so hev must NOT be invariant there once the level embedding is non-zero."""
     m = models["pointer"]
     with torch.no_grad():
@@ -148,7 +148,7 @@ def test_score_levels_are_order_aware(models, tok):
             m.level.weight.zero_()
 
 
-def test_batched_equals_single(models, tok):
+def test_batch_invariance(models, tok):
     m = models["set"]
     r1 = rec(q("which?", ["a", "b", "c"]))
     r2 = rec(q("longer question text?", ["dd", "e"]), q("y/n", ["no", "yes"], "noul"))
@@ -161,7 +161,7 @@ def test_batched_equals_single(models, tok):
             assert torch.allclose(zs, zb, atol=1e-4)
 
 
-def test_packed_equals_separate(models, tok):
+def test_packing_invariance(models, tok):
     """Asking N questions in one request equals asking them one at a time."""
     m = models["pointer"]
     qa, qb = q("which?", ["a", "b", "c"]), q("urgent?", ["no", "yes"], "noul")
@@ -169,6 +169,9 @@ def test_packed_equals_separate(models, tok):
     sep = [m.probs(encode(tok, rec(qa)))[0], m.probs(encode(tok, rec(qb)))[0]]
     for p, s in zip(packed, sep):
         assert torch.allclose(p, s, atol=1e-5)
+
+
+# ---------------------------------------------------------------- readout checkpoint
 
 
 def test_readout_roundtrip(models):

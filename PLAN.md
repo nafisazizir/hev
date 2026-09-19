@@ -22,14 +22,15 @@ Kev baseline to beat or match, all on `evals/decision-v2` development, Qwen3-0.6
 - [x] Frozen suites copied: decision-v2, transfer-v2, smoke-v1 (`evals/`).
 - [x] Offline tests proving: mask rule, shared start positions, unforgeable delimiters, option hidden state independent of siblings, probability invariance under reordering for both heads, question isolation, packed equals separate, batched equals single (`tests/test_model.py`).
 
-### M1. Training loop and smoke run
+### M1. Training loop and smoke run  (done 2026-09-19)
 
-Exit: a `runs/smoke-*/` directory with a trained adapter on `evals/smoke-v1`, loss decreasing, and an eval JSON with accuracy and flip rate on smoke development.
+Exit met by two immutable Qwen3-0.6B-Base MPS runs on `evals/smoke-v1`: [Pointer training](runs/smoke-pointer-s0/training_metrics.json) / [evaluation](runs/smoke-pointer-s0/eval.json) and [Set training](runs/smoke-set-s0/training_metrics.json) / [evaluation](runs/smoke-set-s0/eval.json). Both fixed-set objectives decreased, both evaluations covered all 30 development records / 40 questions, and both had zero Choice argmax flips. These tiny-suite accuracies are pipeline checks, not research results.
 
-- [ ] `hev/train.py`: LoRA + head + level embedding; cross-entropy; optional ranked-probability term for Score; refuses eval-only sources; refuses existing run dir; writes `training_config.json` and `training_metrics.json`. Model kev's loop, not copy it.
-- [ ] `hev/evaluate.py`: accuracy, NLL, Brier, ECE (10 bins on top prob), per source and per type; permutation study (flip rate, prob spread of correct option) on Choice; packed-vs-separate equality. Port the metric functions from kev/evaluate.py, keep the same definitions so numbers are comparable.
-- [ ] Hub test: real Qwen3-0.6B-Base tokenizer round-trips a decision-v2 development record within kev's context limits (marked `hub`).
-- [ ] Smoke run on MPS, both heads. Record wall time and peak memory.
+- [x] `hev/train.py`: LoRA + head + level embedding; cross-entropy; optional ranked-probability term for Score; refuses eval-only sources and existing run directories; writes `training_config.json` and `training_metrics.json`.
+- [x] `hev/evaluate.py`: accuracy, NLL, Brier and 10-bin ECE per source and type; calibration-only global temperature; Choice permutation study; packed-vs-separate equality; auditable `eval_rows.json`.
+- [x] Hub test: the real pinned Qwen3-0.6B-Base tokenizer strictly encodes every decision-v2 and transfer-v2 development record within kev's context limits (`HEV_HUB_TESTS=1 uv run pytest tests/test_hub.py -v`: 3 passed).
+- [x] Pointer smoke: fixed objective 1.970 → 0.213; development accuracy 50.0%; flip rate 0; p90 correct-probability spread 0.000006; packed max difference 0.000007; 15.6 s training; 3.23 GB peak MPS allocation. [Metrics](runs/smoke-pointer-s0/training_metrics.json), [evaluation](runs/smoke-pointer-s0/eval.json).
+- [x] Set smoke: fixed objective 1.807 → 0.153; development accuracy 30.0%; flip rate 0; p90 correct-probability spread 0.000007; packed max difference 0.000003; 13.9 s training; 3.25 GB peak MPS allocation. [Metrics](runs/smoke-set-s0/training_metrics.json), [evaluation](runs/smoke-set-s0/eval.json).
 
 ### M2. First real comparison
 
