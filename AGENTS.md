@@ -36,6 +36,7 @@ Hardware: Apple M4 Max, 36 GB. Base models are not cached yet; first real run do
 |---|---|
 | Roadmap and current milestone | PLAN.md |
 | Mask rule, positions, heads, invariance argument | docs/DESIGN.md |
+| Illustrated walkthrough for newcomers (open in a browser) | docs/explainer.html |
 | Why each choice was made, alternatives rejected | docs/DECISIONS.md |
 | What kev has, what to port, kev/Jev baseline numbers | docs/KEV.md |
 | Suite format, provenance, policy | docs/EVALS.md, evals/README.md |

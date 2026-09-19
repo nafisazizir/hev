@@ -8,7 +8,7 @@ hev is a research project by Nafis, started 2026-09-19. It follows the shape of 
 
 In kev, a question's options are packed one after another under a causal mask, so option 3's hidden state has already read options 1 and 2. That is where option-order sensitivity comes from, and kev measures it at 7% argmax flips and a p90 probability spread of 0.25 under reordering. hev gives every option its own branch under the block mask, with all options of a question sharing the same start position, so the backbone representation of an option is a function of (state, instruction, that option's text) and nothing else. Order can then only enter through the readout, and the readouts are permutation-equivariant by construction. Flip rate is zero by design. The experiment is what that costs in accuracy, and whether a small listwise set-readout recovers it.
 
-Full design: [docs/DESIGN.md](docs/DESIGN.md). Roadmap: [PLAN.md](PLAN.md). Decision log: [docs/DECISIONS.md](docs/DECISIONS.md).
+Full design: [docs/DESIGN.md](docs/DESIGN.md). Illustrated walkthrough with the end-to-end pipeline and computed mask grids: [docs/explainer.html](docs/explainer.html) (open in a browser). Roadmap: [PLAN.md](PLAN.md). Decision log: [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Status
 

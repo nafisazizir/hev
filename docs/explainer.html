@@ -1,0 +1,817 @@
+<title>How hev Works</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #EEF1F5;
+    --surface: #FFFFFF;
+    --ink: #1B2430;
+    --muted: #5F6B7A;
+    --line: #CBD3DD;
+    --line-soft: #E1E6EC;
+    --hev: #0E8C7F;
+    --hev-soft: #D6EFEB;
+    --kev: #C4622D;
+    --kev-soft: #F6E2D5;
+    --state: #4A5FC1;
+    --state-soft: #DDE2F7;
+    --instr: #7A5AA6;
+    --instr-soft: #E7DFF2;
+    --opt: #8A7A2E;
+    --opt-soft: #EFE9C9;
+    --cell-on: #1B2430;
+    --cell-off: #E9EDF2;
+    --code-bg: #F5F7FA;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #12171E; --surface: #1A2028; --ink: #E6EAF0; --muted: #97A2B0; --line: #3A4553; --line-soft: #28313C;
+      --hev: #3FC1B0; --hev-soft: #12332F; --kev: #E58A5A; --kev-soft: #3A2417;
+      --state: #8C9CEB; --state-soft: #232B4A; --instr: #B79BDD; --instr-soft: #2F2543; --opt: #CDBB63; --opt-soft: #3A351B;
+      --cell-on: #E6EAF0; --cell-off: #232B35; --code-bg: #141920;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #12171E; --surface: #1A2028; --ink: #E6EAF0; --muted: #97A2B0; --line: #3A4553; --line-soft: #28313C;
+    --hev: #3FC1B0; --hev-soft: #12332F; --kev: #E58A5A; --kev-soft: #3A2417;
+    --state: #8C9CEB; --state-soft: #232B4A; --instr: #B79BDD; --instr-soft: #2F2543; --opt: #CDBB63; --opt-soft: #3A351B;
+    --cell-on: #E6EAF0; --cell-off: #232B35; --code-bg: #141920;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif; font-size: 16px; line-height: 1.6; }
+  .wrap { max-width: 920px; margin: 0 auto; padding-block: 40px 80px; padding-inline: 20px; }
+  h1, h2, h3 { font-family: "Sora", "IBM Plex Sans", system-ui, sans-serif; text-wrap: balance; line-height: 1.2; }
+  h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 24px; font-weight: 600; margin: 56px 0 8px; }
+  h3 { font-size: 17px; font-weight: 600; margin: 28px 0 6px; }
+  .lede { font-size: 18px; color: var(--muted); max-width: 62ch; margin: 0 0 8px; }
+  p { max-width: 68ch; margin: 0 0 14px; }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .path { display: flex; flex-wrap: wrap; gap: 6px 10px; margin: 20px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+  .path li a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .path li + li::before { content: "→"; margin-right: 10px; color: var(--line); }
+  code, .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+  pre { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 6px; padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
+  pre code { font-size: inherit; }
+  figure { margin: 22px 0 26px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 8px; padding: 18px 18px 14px; }
+  figure .scroll { overflow-x: auto; }
+  figure svg { display: block; max-width: 100%; height: auto; }
+  figcaption { font-size: 14px; color: var(--muted); margin-top: 12px; max-width: 72ch; line-height: 1.5; }
+  figcaption strong { color: var(--ink); font-weight: 600; }
+  .term { border-bottom: 1.5px dotted var(--line); cursor: help; }
+  .kv { color: var(--kev); font-weight: 600; }
+  .hv { color: var(--hev); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend .s::before { background: var(--state-soft); border: 1px solid var(--state); }
+  .legend .i::before { background: var(--instr-soft); border: 1px solid var(--instr); }
+  .legend .o::before { background: var(--opt-soft); border: 1px solid var(--opt); }
+  .legend .d::before { background: var(--ink); }
+  .legend .on::before { background: var(--cell-on); }
+  .legend .off::before { background: var(--cell-off); border: 1px solid var(--line-soft); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+  .callout { border-left: 3px solid var(--hev); padding: 6px 0 6px 16px; margin: 20px 0; max-width: 68ch; }
+  .callout.k { border-color: var(--kev); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 12px 0 20px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  td.num { font-variant-numeric: tabular-nums; }
+  dl { max-width: 68ch; }
+  dt { font-weight: 600; margin-top: 12px; }
+  dd { margin: 2px 0 0; color: var(--ink); }
+  .tokens { display: flex; flex-wrap: wrap; gap: 4px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; margin: 6px 0 4px; }
+  .tokens .t { padding: 3px 7px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+  .t.s { background: var(--state-soft); border-color: var(--state); }
+  .t.i { background: var(--instr-soft); border-color: var(--instr); }
+  .t.o { background: var(--opt-soft); border-color: var(--opt); }
+  .t.d { background: var(--ink); color: var(--ground); border-color: var(--ink); font-weight: 500; }
+  .t.sp { background: var(--surface); border-color: var(--line); color: var(--muted); }
+  .rowlabel { font-family: "Sora", sans-serif; font-size: 13px; font-weight: 600; margin: 14px 0 2px; }
+  .rowlabel.k { color: var(--kev); } .rowlabel.h { color: var(--hev); }
+  .grids { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 720px) { .grids { grid-template-columns: 1fr; } }
+  .grids h4 { font-family: "Sora", sans-serif; font-size: 14px; margin: 0 0 6px; }
+  .grids h4.k { color: var(--kev); } .grids h4.h { color: var(--hev); }
+  .note { font-size: 13px; color: var(--muted); }
+  a { color: var(--hev); }
+  a:focus-visible, .term:focus-visible { outline: 2px solid var(--hev); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">hev · architecture explainer · 2026-09-19</div>
+  <h1>How hev works, and what it changes from kev</h1>
+  <p class="lede">A walk from "what goes in" to "what comes out", drawn at the level of individual tokens. No prior machine learning knowledge assumed. Every figure shows a mechanism, and the two attention grids are computed on this page from the same rule the code uses.</p>
+  <ul class="path">
+    <li><a href="#job">1 The job</a></li><li><a href="#pipeline">2 The whole pipeline</a></li><li><a href="#tokens">3 Tokens and vectors</a></li><li><a href="#attention">4 Attention and masks</a></li>
+    <li><a href="#packing">5 Packing</a></li><li><a href="#mask">6 The mask, kev vs hev</a></li><li><a href="#depends">7 Where order sensitivity comes from</a></li>
+    <li><a href="#positions">8 Positions</a></li><li><a href="#readout">9 Readout heads</a></li><li><a href="#score">10 Ordered levels</a></li>
+    <li><a href="#training">11 Training</a></li><li><a href="#experiment">12 The experiment</a></li><li><a href="#glossary">Glossary</a></li>
+  </ul>
+
+  <!-- ============================================================ 1 -->
+  <h2 id="job">1. The job: typed questions in, probabilities out</h2>
+  <p>A normal language model writes text one word at a time. Kev, hev and Jev do not write anything. They read a piece of text (the <strong>state</strong>) and a set of typed <strong>questions</strong> about it, and return a probability for every allowed answer. Software can use those numbers directly: route a ticket, gate a workflow, rank candidates.</p>
+  <p>Three question types exist, and all three are the same operation underneath: score a list of options and turn the scores into probabilities.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 250" role="img" aria-label="A request with state and three typed questions goes into the model in one forward pass and comes out as probabilities per option.">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker>
+      </defs>
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
+        <rect x="10" y="20" width="300" height="210" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="24" y="42" font-family="Sora, sans-serif" font-weight="600" font-size="13">Request</text>
+        <text x="24" y="66" fill="var(--state)">state:</text>
+        <text x="24" y="82">"Shoes arrived two weeks late and</text>
+        <text x="24" y="98">in the wrong size."</text>
+        <text x="24" y="126" fill="var(--instr)">department  (choice)</text>
+        <text x="40" y="142" fill="var(--opt)">returns · shipping · billing</text>
+        <text x="24" y="166" fill="var(--instr)">escalate    (noul)</text>
+        <text x="40" y="182" fill="var(--opt)">no · yes</text>
+        <text x="24" y="206" fill="var(--instr)">frustration (score)</text>
+        <text x="40" y="222" fill="var(--opt)">calm &lt; frustrated &lt; very angry</text>
+
+        <line x1="318" y1="125" x2="372" y2="125" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="380" y="85" width="150" height="80" rx="6" fill="var(--hev-soft)" stroke="var(--hev)"/>
+        <text x="455" y="115" text-anchor="middle" font-family="Sora, sans-serif" font-weight="600" font-size="13">one forward pass</text>
+        <text x="455" y="135" text-anchor="middle" font-size="11" fill="var(--muted)">no text generated</text>
+        <text x="455" y="151" text-anchor="middle" font-size="11" fill="var(--muted)">~160 ms on a laptop</text>
+        <line x1="538" y1="125" x2="592" y2="125" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <rect x="600" y="20" width="270" height="210" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="614" y="42" font-family="Sora, sans-serif" font-weight="600" font-size="13">Answers</text>
+        <text x="614" y="70" fill="var(--instr)">department</text>
+        <g>
+          <rect x="700" y="60" width="150" height="10" fill="var(--cell-off)"/><rect x="700" y="60" width="141" height="10" fill="var(--hev)"/>
+          <text x="614" y="88" font-size="11">returns 0.94</text>
+          <rect x="700" y="78" width="150" height="10" fill="var(--cell-off)"/><rect x="700" y="78" width="6" height="10" fill="var(--hev)"/>
+          <text x="614" y="104" font-size="11">shipping 0.04 · billing 0.02</text>
+        </g>
+        <text x="614" y="134" fill="var(--instr)">escalate</text>
+        <rect x="700" y="124" width="150" height="10" fill="var(--cell-off)"/><rect x="700" y="124" width="70" height="10" fill="var(--hev)"/>
+        <text x="614" y="152" font-size="11">p(yes) = 0.47</text>
+        <text x="614" y="182" fill="var(--instr)">frustration</text>
+        <rect x="700" y="172" width="150" height="10" fill="var(--cell-off)"/><rect x="700" y="172" width="100" height="10" fill="var(--hev)"/>
+        <text x="614" y="200" font-size="11">expected level 0.67 of 2</text>
+        <text x="614" y="216" font-size="11" fill="var(--muted)">calm .43 · frustrated .47 · angry .10</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>The contract.</strong> The state is read once. Every question is answered in the same pass. Output is a probability distribution per question, not a string. The example numbers are from kev's README.</figcaption>
+  </figure>
+
+  <!-- ============================================================ pipeline -->
+  <h2 id="pipeline">2. The whole pipeline in one picture</h2>
+  <p>Before the details, here is the map. A request travels down the left column. The backbone is one stage in the middle of it, not the start: packing and the mask come <em>before</em> the backbone because they decide what the backbone is allowed to read. The right side zooms into one of the 28 layers to show where the mask, the position ids and the LoRA adapters plug in. Stages with a teal bar are the ones where hev differs from kev; every other stage is identical.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 1010" style="min-width: 760px" role="img" aria-label="End-to-end pipeline: request JSON, render to text, tokenize, pack into one sequence, build the mask, embed, 28 transformer layers with LoRA, gather decide and option vectors, add level embedding for score, readout head, temperature and softmax, answers JSON. A zoom shows one layer with RoPE positions on q and k, the mask added to attention scores, and LoRA on every projection. Training feeds cross-entropy back to LoRA, the head and the level embedding only.">
+      <g fill="currentColor" font-family="IBM Plex Sans, sans-serif" font-size="12">
+        <!-- left column stages -->
+        <g id="stages" font-size="12">
+          <!-- helper: box x=30 w=370 h=48; teal bar at x=24 if differs -->
+          <g transform="translate(30 20)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">1 · Request</text>
+            <text x="14" y="38" fill="var(--muted)">state + typed questions, as JSON</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">api.py</text>
+          </g>
+          <line x1="215" y1="68" x2="215" y2="90" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 92)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">2 · Render to text</text>
+            <text x="14" y="38" fill="var(--muted)">objects and lists flattened to labelled lines; options become "key: description"</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">render()</text>
+          </g>
+          <line x1="215" y1="140" x2="215" y2="162" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 164)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">3 · Tokenize</text>
+            <text x="14" y="38" fill="var(--muted)">Qwen tokenizer; user text can never produce a delimiter token</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">user_tokens()</text>
+          </g>
+          <line x1="215" y1="212" x2="215" y2="234" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 236)">
+            <rect x="-6" y="0" width="4" height="48" rx="2" fill="var(--hev)"/>
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--hev)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">4 · Pack into one sequence</text>
+            <text x="14" y="38" fill="var(--muted)">state, then each question; every token tagged seg / sub / pos</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">encode()</text>
+          </g>
+          <line x1="215" y1="284" x2="215" y2="306" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 308)">
+            <rect x="-6" y="0" width="4" height="48" rx="2" fill="var(--hev)"/>
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--hev)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">5 · Build the mask</text>
+            <text x="14" y="38" fill="var(--muted)">L × L grid of allowed reads, from the rule in section 6</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">branch_mask()</text>
+          </g>
+          <line x1="215" y1="356" x2="215" y2="378" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 380)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">6 · Embed</text>
+            <text x="14" y="38" fill="var(--muted)">each token id → its 1,024-number vector (a lookup table)</text>
+          </g>
+          <line x1="215" y1="428" x2="215" y2="450" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 452)">
+            <rect x="0" y="0" width="370" height="96" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"/>
+            <text x="14" y="22" font-family="Sora, sans-serif" font-weight="600">7 · Backbone: Qwen3-0.6B-Base, 28 layers</text>
+            <text x="14" y="42" fill="var(--muted)">weights frozen; LoRA adapters trained inside every layer</text>
+            <text x="14" y="62" fill="var(--muted)">the mask and position ids are inputs to every layer</text>
+            <text x="14" y="84" fill="var(--muted)">no vocabulary head: the model never predicts a next word</text>
+            <text x="356" y="90" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">model.lm</text>
+          </g>
+          <line x1="215" y1="548" x2="215" y2="570" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 572)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">8 · Gather</text>
+            <text x="14" y="38" fill="var(--muted)">per question: the decide vector, and the vector at each option's &lt;/opt&gt;</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">_readout()</text>
+          </g>
+          <line x1="215" y1="620" x2="215" y2="642" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 644)">
+            <rect x="-6" y="0" width="4" height="48" rx="2" fill="var(--hev)"/>
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--hev)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">9 · Level embedding  (score questions only)</text>
+            <text x="14" y="38" fill="var(--muted)">add learned E[j] to option j so ordered levels know their order</text>
+          </g>
+          <line x1="215" y1="692" x2="215" y2="714" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 716)">
+            <rect x="-6" y="0" width="4" height="48" rx="2" fill="var(--hev)"/>
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--hev-soft)" stroke="var(--hev)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">10 · Readout head</text>
+            <text x="14" y="38" fill="var(--muted)">PointerHead (as kev) or SetHead (new) → one score per option</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">model.head</text>
+          </g>
+          <line x1="215" y1="764" x2="215" y2="786" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 788)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">11 · Temperature, then softmax</text>
+            <text x="14" y="38" fill="var(--muted)">scores ÷ T (one number, fitted after training), then normalise to sum to 1</text>
+          </g>
+          <line x1="215" y1="836" x2="215" y2="858" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <g transform="translate(30 860)">
+            <rect x="0" y="0" width="370" height="48" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="14" y="20" font-family="Sora, sans-serif" font-weight="600">12 · Answers</text>
+            <text x="14" y="38" fill="var(--muted)">noul → p(yes); choice → argmax + distribution; score → expected level</text>
+            <text x="356" y="30" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)">to_answers()</text>
+          </g>
+        </g>
+
+        <!-- shapes column between stages and zoom -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--muted)">
+          <text x="412" y="196">tokens: L ids</text>
+          <text x="412" y="268">+ seg, sub, pos</text>
+          <text x="412" y="340">mask: L × L</text>
+          <text x="412" y="412">L × 1024</text>
+          <text x="412" y="604">1 × 1024, K × 1024</text>
+          <text x="412" y="748">K scores</text>
+          <text x="412" y="820">K probabilities</text>
+        </g>
+
+        <!-- training branch -->
+        <g>
+          <line x1="400" y1="740" x2="470" y2="740" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+          <rect x="478" y="722" width="150" height="36" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="553" y="740" text-anchor="middle" font-size="11">training only:</text>
+          <text x="553" y="752" text-anchor="middle" font-size="11">cross-entropy vs label</text>
+          <path d="M553 722 C 553 700, 660 700, 660 560" stroke="var(--hev)" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+          <text x="672" y="690" font-size="10.5" fill="var(--hev)">gradients update only</text>
+          <text x="672" y="704" font-size="10.5" fill="var(--hev)">LoRA, head, level E</text>
+        </g>
+
+        <!-- zoom: one layer -->
+        <g transform="translate(470 40)">
+          <path d="M-70 460 L 0 300" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3" fill="none"/>
+          <path d="M-70 508 L 0 508" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3" fill="none"/>
+          <rect x="0" y="0" width="390" height="508" rx="8" fill="var(--ground)" stroke="var(--line)"/>
+          <text x="14" y="24" font-family="Sora, sans-serif" font-weight="600" font-size="13">Inside one of the 28 layers</text>
+          <text x="14" y="42" fill="var(--muted)" font-size="11">input: L vectors of 1,024 numbers</text>
+
+          <!-- attention block -->
+          <rect x="14" y="56" width="362" height="250" rx="6" fill="var(--surface)" stroke="var(--line-soft)"/>
+          <text x="26" y="76" font-family="Sora, sans-serif" font-weight="600" font-size="12">Attention</text>
+          <text x="26" y="98" font-size="11">RMSNorm</text>
+          <g font-size="11">
+            <rect x="26" y="108" width="100" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="76" y="124" text-anchor="middle">q = W_q · x</text>
+            <rect x="136" y="108" width="100" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="186" y="124" text-anchor="middle">k = W_k · x</text>
+            <rect x="246" y="108" width="100" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="296" y="124" text-anchor="middle">v = W_v · x</text>
+            <rect x="106" y="100" width="34" height="14" rx="7" fill="var(--hev)"/><text x="123" y="110" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+            <rect x="216" y="100" width="34" height="14" rx="7" fill="var(--hev)"/><text x="233" y="110" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+            <rect x="326" y="100" width="34" height="14" rx="7" fill="var(--hev)"/><text x="343" y="110" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+          </g>
+          <line x1="76" y1="132" x2="76" y2="150" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+          <line x1="186" y1="132" x2="186" y2="150" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+          <rect x="26" y="152" width="210" height="24" rx="4" fill="var(--state-soft)" stroke="var(--state)"/>
+          <text x="131" y="168" text-anchor="middle" font-size="11">RoPE: rotate q, k by position id</text>
+          <text x="246" y="168" font-size="10.5" fill="var(--state)">← pos from stage 4</text>
+          <line x1="131" y1="176" x2="131" y2="194" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+          <rect x="26" y="196" width="210" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="131" y="212" text-anchor="middle" font-size="11">scores = q · kᵀ / √d   (L × L)</text>
+          <line x1="131" y1="220" x2="131" y2="238" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+          <rect x="26" y="240" width="210" height="24" rx="4" fill="var(--hev-soft)" stroke="var(--hev)"/>
+          <text x="131" y="256" text-anchor="middle" font-size="11">+ mask  (forbidden → −∞), softmax</text>
+          <text x="246" y="256" font-size="10.5" fill="var(--hev)">← mask from stage 5</text>
+          <line x1="131" y1="264" x2="131" y2="282" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+          <text x="26" y="298" font-size="11">weights · v  →  W_o</text>
+          <rect x="128" y="286" width="34" height="14" rx="7" fill="var(--hev)"/><text x="145" y="296" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+          <text x="176" y="298" font-size="11">→ add to input (residual)</text>
+
+          <!-- mlp block -->
+          <rect x="14" y="318" width="362" height="120" rx="6" fill="var(--surface)" stroke="var(--line-soft)"/>
+          <text x="26" y="338" font-family="Sora, sans-serif" font-weight="600" font-size="12">MLP  (each token on its own, no mixing)</text>
+          <text x="26" y="360" font-size="11">RMSNorm</text>
+          <g font-size="11">
+            <rect x="26" y="370" width="100" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="76" y="386" text-anchor="middle">W_gate</text>
+            <rect x="136" y="370" width="100" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="186" y="386" text-anchor="middle">W_up</text>
+            <rect x="246" y="370" width="100" height="24" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="296" y="386" text-anchor="middle">W_down</text>
+            <rect x="106" y="362" width="34" height="14" rx="7" fill="var(--hev)"/><text x="123" y="372" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+            <rect x="216" y="362" width="34" height="14" rx="7" fill="var(--hev)"/><text x="233" y="372" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+            <rect x="326" y="362" width="34" height="14" rx="7" fill="var(--hev)"/><text x="343" y="372" text-anchor="middle" fill="var(--ground)" font-size="9">LoRA</text>
+          </g>
+          <text x="26" y="418" font-size="11">silu(gate) ⊙ up → down → add to input (residual)</text>
+
+          <text x="14" y="462" fill="var(--muted)" font-size="11">output: L vectors of 1,024 numbers, into the next layer</text>
+          <text x="14" y="482" fill="var(--muted)" font-size="11">Seven projections per layer carry LoRA: q, k, v, o, gate, up, down.</text>
+          <text x="14" y="497" fill="var(--muted)" font-size="11">Same seven in kev. The frozen weights are untouched.</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>The map.</strong> Stages 1 to 3 and 6 to 8, 11 and 12 are identical to kev. Stage 4 differs by where the decide token goes and by the extra <span class="mono">sub</span> tag and shared option positions. Stage 5 is the mask rule. Stage 9 exists only in hev. Stage 10 is where the optional set head lives. Inside a layer, position ids enter at RoPE and the mask enters at the attention scores, which is why those two stages must come before the backbone. The backbone itself is unchanged Qwen3 with LoRA on the same seven projections kev adapts.</figcaption>
+  </figure>
+
+  <p>So your guess of "backbone, pack, mask, readout" has the right parts. The actual order is pack, mask, backbone, readout, because the mask is an <em>input</em> to every attention step inside the backbone rather than something applied afterwards.</p>
+
+  <!-- ============================================================ 2 -->
+  <h2 id="tokens">3. Tokens and vectors</h2>
+  <p>A model cannot read letters. Text is first cut into <span class="term" title="A token is a chunk of text, usually a word or part of a word, that the model treats as one unit.">tokens</span>, small chunks of a few characters each, and each token is looked up in a table to get a list of numbers called a <span class="term" title="A vector is just a list of numbers. Here every token becomes a list of 1,024 numbers.">vector</span>. For Qwen3-0.6B that list has 1,024 numbers. Everything that follows is arithmetic on those lists.</p>
+  <p>A <span class="term" title="Transformer: a stack of identical layers, each of which lets tokens exchange information via attention, then transforms each token's vector with a small neural network.">transformer</span> is a stack of layers, 28 in this model. Each layer updates every token's vector by letting it read from other tokens' vectors. After the last layer, each token's vector is a summary of that token <em>in context</em>. Which context it got to read is decided by the attention mask, which is the whole story of hev.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 150" role="img" aria-label="Text becomes tokens, each token becomes a vector of 1024 numbers, and 28 layers update those vectors.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
+        <text x="10" y="30" font-family="Sora, sans-serif" font-weight="600" font-size="13">"wrong size"</text>
+        <line x1="120" y1="26" x2="160" y2="26" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="166" y="30" fill="var(--muted)" font-size="11">tokenize</text>
+        <rect x="230" y="12" width="56" height="26" rx="4" fill="var(--state-soft)" stroke="var(--state)"/><text x="258" y="30" text-anchor="middle">wrong</text>
+        <rect x="292" y="12" width="48" height="26" rx="4" fill="var(--state-soft)" stroke="var(--state)"/><text x="316" y="30" text-anchor="middle">size</text>
+        <line x1="350" y1="26" x2="390" y2="26" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="396" y="30" fill="var(--muted)" font-size="11">look up</text>
+        <g transform="translate(460 8)">
+          <rect x="0" y="0" width="150" height="36" rx="4" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="8" y="23" font-size="11">[0.12, -1.7, 0.03, … ]</text>
+          <text x="160" y="23" font-size="11" fill="var(--muted)">1,024 numbers per token</text>
+        </g>
+        <g transform="translate(230 70)">
+          <text x="0" y="0" fill="var(--muted)" font-size="11">then, 28 times:</text>
+          <rect x="0" y="10" width="400" height="60" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="14" y="34" font-size="12">attention: each token reads the tokens the mask allows</text>
+          <text x="14" y="56" font-size="12">MLP: each token's vector is transformed on its own</text>
+          <line x1="420" y1="40" x2="470" y2="40" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text x="478" y="36" font-size="11">final vectors,</text>
+          <text x="478" y="52" font-size="11">one per token</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>From text to vectors.</strong> The only step where tokens influence each other is attention. The mask controls it.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 3 -->
+  <h2 id="attention">4. Attention and the mask</h2>
+  <p><span class="term" title="Attention: for each token, compute a weighted average of other tokens' vectors, with weights learned from how relevant each one looks.">Attention</span> is the mechanism by which a token reads others. For each token (call it the <strong>query</strong>), the layer looks at every other token (the <strong>keys</strong>), scores how relevant each is, and blends their vectors into the query's vector in proportion to those scores.</p>
+  <p>The <span class="term" title="Attention mask: a grid of allowed/forbidden pairs. A forbidden pair gets a score of minus infinity so it contributes nothing.">mask</span> is a grid that says which (query, key) pairs are allowed at all. A forbidden pair is set to minus infinity before the scores are normalised, so it contributes exactly nothing. Ordinary language models use a <strong>causal</strong> mask: a token may read anything before it and nothing after it. That is the triangle below.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 210" role="img" aria-label="A causal attention mask: each row is a query token, each column a key token, and only cells on or below the diagonal are allowed.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="11">
+        <text x="10" y="20" font-family="Sora, sans-serif" font-weight="600" font-size="13">Causal mask for 6 tokens</text>
+        <text x="150" y="44" text-anchor="middle" font-size="11" fill="var(--muted)">keys (what may be read)</text>
+        <text x="16" y="130" transform="rotate(-90 16 130)" text-anchor="middle" font-size="11" fill="var(--muted)">queries (who is reading)</text>
+        <g id="causal6" transform="translate(60 52)"></g>
+        <g transform="translate(330 60)">
+          <text x="0" y="0" font-size="12">Row 4 is token 4 reading.</text>
+          <text x="0" y="20" font-size="12">It may read tokens 1, 2, 3 and itself.</text>
+          <text x="0" y="40" font-size="12">It may not read 5 or 6: they are in the future.</text>
+          <text x="0" y="72" font-size="12" fill="var(--muted)">Both kev and hev keep this triangle and</text>
+          <text x="0" y="90" font-size="12" fill="var(--muted)">remove cells from it. Neither ever adds a cell,</text>
+          <text x="0" y="108" font-size="12" fill="var(--muted)">so the base model's pretrained habits still apply.</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>Reading the grid.</strong> Dark cell means allowed. Row = who is reading, column = what is read. The diagonal is always allowed: a token can read itself.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 4 -->
+  <h2 id="packing">5. Packing: one sequence for the state and every question</h2>
+  <p>Both models put the state and all the questions into <strong>one</strong> sequence, so the state is processed once no matter how many questions there are. Five rarely used special tokens act as delimiters. They cannot be produced from user text, so a hostile ticket cannot forge an option boundary.</p>
+  <p>Here is a state and one question with three options, packed the kev way and the hev way. The tokens are identical. The only difference is where the <span class="mono">decide</span> token sits.</p>
+
+  <figure>
+    <div class="rowlabel k">kev packing</div>
+    <div class="tokens" id="pack-kev"></div>
+    <div class="rowlabel h">hev packing</div>
+    <div class="tokens" id="pack-hev"></div>
+    <div class="legend"><span class="s">state</span><span class="i">instruction</span><span class="o">option</span><span class="d">decide token</span></div>
+    <figcaption><strong>Same tokens, one moved.</strong> In kev the <span class="mono">decide</span> token comes last, after it has read all the options in order. In hev it comes right after the instruction, before any option, so it is a question about the state, not a summary of the list. A second question would follow the same pattern after this one.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 5 -->
+  <h2 id="mask">6. The mask, kev versus hev</h2>
+  <p>Now the central figure. Both grids start from the causal triangle and remove cells. Kev's rule: a token may read the state, or anything earlier in its <em>own question</em>. Hev's rule adds one more clause: an option may read its own question's instruction and itself, but <strong>never a sibling option</strong>.</p>
+  <p>Look at the rows for option 2 and option 3. In kev they reach back into option 1's columns. In hev those cells are gone. That handful of cells is the entire architectural difference.</p>
+
+  <figure>
+    <div class="grids">
+      <div>
+        <h4 class="k">kev: block-causal by question</h4>
+        <div class="scroll"><svg id="grid-kev" role="img" aria-label="kev's attention mask: option tokens may read earlier options in the same question."></svg></div>
+      </div>
+      <div>
+        <h4 class="h">hev: block-causal by question and by option</h4>
+        <div class="scroll"><svg id="grid-hev" role="img" aria-label="hev's attention mask: option tokens may read only the state, the instruction, and themselves."></svg></div>
+      </div>
+    </div>
+    <div class="legend"><span class="on">allowed</span><span class="off">forbidden</span><span class="s">state</span><span class="i">instruction and decide</span><span class="o">options</span></div>
+    <figcaption><strong>Computed, not drawn.</strong> These two grids are generated by a few lines of script on this page that implement the two rules literally. The cells marked with a small orange dot are allowed in kev and forbidden in hev: the option-to-sibling reads. Everything else agrees.</figcaption>
+  </figure>
+
+  <pre><code>kev:  allow(i, j) = j ≤ i and ( seg[j] == state  or  seg[j] == seg[i] )
+
+hev:  allow(i, j) = j ≤ i and ( seg[j] == state
+                             or (seg[j] == seg[i] and sub[j] == instruction)
+                             or (seg[j] == seg[i] and sub[j] == sub[i]) )
+
+seg = which question a token belongs to (0 for the state)
+sub = which option within that question (0 for the instruction)</code></pre>
+
+  <!-- ============================================================ 6 -->
+  <h2 id="depends">7. Where order sensitivity comes from, and why hev cannot have it</h2>
+  <p>Ask a simple question: at the end of the network, what does option 3's vector depend on? Trace the allowed reads through all 28 layers.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 300" role="img" aria-label="In kev, option 3's final vector depends on the state, the instruction, options 1 and 2, and its list position. In hev it depends only on the state, the instruction, and its own text.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
+        <!-- kev side -->
+        <text x="10" y="24" font-family="Sora, sans-serif" font-weight="600" font-size="14" fill="var(--kev)">kev</text>
+        <g transform="translate(10 40)">
+          <rect x="0" y="0" width="120" height="26" rx="4" fill="var(--state-soft)" stroke="var(--state)"/><text x="60" y="18" text-anchor="middle">state</text>
+          <rect x="0" y="36" width="120" height="26" rx="4" fill="var(--instr-soft)" stroke="var(--instr)"/><text x="60" y="54" text-anchor="middle">instruction</text>
+          <rect x="0" y="72" width="120" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--kev)" stroke-width="2"/><text x="60" y="90" text-anchor="middle">option 1</text>
+          <rect x="0" y="108" width="120" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--kev)" stroke-width="2"/><text x="60" y="126" text-anchor="middle">option 2</text>
+          <rect x="0" y="144" width="120" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="60" y="162" text-anchor="middle">option 3 text</text>
+          <rect x="0" y="180" width="120" height="26" rx="4" fill="var(--surface)" stroke="var(--kev)" stroke-width="2"/><text x="60" y="198" text-anchor="middle">position = 3rd</text>
+          <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+            <path d="M120 13 C 200 13, 200 100, 250 100"/>
+            <path d="M120 49 C 200 49, 200 100, 250 100"/>
+            <path d="M120 85 C 200 85, 200 100, 250 100" stroke="var(--kev)" stroke-width="2"/>
+            <path d="M120 121 C 200 121, 200 100, 250 100" stroke="var(--kev)" stroke-width="2"/>
+            <path d="M120 157 C 200 157, 200 100, 250 100"/>
+            <path d="M120 193 C 200 193, 200 100, 250 100" stroke="var(--kev)" stroke-width="2"/>
+          </g>
+          <rect x="256" y="80" width="150" height="40" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="331" y="105" text-anchor="middle" font-family="Sora, sans-serif" font-weight="600" font-size="12">h(option 3)</text>
+        </g>
+        <text x="10" y="262" font-size="12" fill="var(--muted)">Swap options 1 and 3 and every orange input changes,</text>
+        <text x="10" y="280" font-size="12" fill="var(--muted)">so the vector changes, so the probability can change.</text>
+
+        <!-- hev side -->
+        <text x="470" y="24" font-family="Sora, sans-serif" font-weight="600" font-size="14" fill="var(--hev)">hev</text>
+        <g transform="translate(470 40)">
+          <rect x="0" y="0" width="120" height="26" rx="4" fill="var(--state-soft)" stroke="var(--state)"/><text x="60" y="18" text-anchor="middle">state</text>
+          <rect x="0" y="36" width="120" height="26" rx="4" fill="var(--instr-soft)" stroke="var(--instr)"/><text x="60" y="54" text-anchor="middle">instruction</text>
+          <rect x="0" y="72" width="120" height="26" rx="4" fill="var(--cell-off)" stroke="var(--line-soft)"/><text x="60" y="90" text-anchor="middle" fill="var(--muted)">option 1</text>
+          <rect x="0" y="108" width="120" height="26" rx="4" fill="var(--cell-off)" stroke="var(--line-soft)"/><text x="60" y="126" text-anchor="middle" fill="var(--muted)">option 2</text>
+          <rect x="0" y="144" width="120" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="60" y="162" text-anchor="middle">option 3 text</text>
+          <rect x="0" y="180" width="120" height="26" rx="4" fill="var(--cell-off)" stroke="var(--line-soft)"/><text x="60" y="198" text-anchor="middle" fill="var(--muted)">position: shared</text>
+          <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+            <path d="M120 13 C 200 13, 200 100, 250 100"/>
+            <path d="M120 49 C 200 49, 200 100, 250 100"/>
+            <path d="M120 157 C 200 157, 200 100, 250 100"/>
+          </g>
+          <rect x="256" y="80" width="150" height="40" rx="6" fill="var(--hev-soft)" stroke="var(--hev)"/>
+          <text x="331" y="105" text-anchor="middle" font-family="Sora, sans-serif" font-weight="600" font-size="12">h(option 3)</text>
+        </g>
+        <text x="470" y="262" font-size="12" fill="var(--muted)">Nothing that feeds this vector knows about siblings</text>
+        <text x="470" y="280" font-size="12" fill="var(--muted)">or list position. Reordering cannot change it.</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>The dependency graph is the proof.</strong> Kev fights order sensitivity with training tricks (shuffling options during training, a consistency penalty) and still ends at 7% of answers flipping under reorder. In hev the offending inputs are not connected, so the flip rate is zero before any training happens. The unit tests check this numerically on a random network.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <strong>The trade being made.</strong> Kev's option 3 could <em>compare itself</em> to options 1 and 2 while reading them, deep inside the network. Hev's option 3 is read alone. Comparison now has to happen later, in the readout (section 9). Whether that costs accuracy is exactly what the first experiment measures. In retrieval systems this same trade is called cross-encoder versus bi-encoder.
+  </div>
+
+  <!-- ============================================================ 7 -->
+  <h2 id="positions">8. Positions: every option starts at the same place</h2>
+  <p>Attention has no built-in sense of order, so transformers stamp each token with a <span class="term" title="Position encoding (RoPE in Qwen): a rotation applied to each token's vector that depends on its index in the sequence, so the model can tell first from fifth.">position number</span>. If options 1, 2 and 3 sat at positions 10, 13 and 16, their vectors would differ by position alone, even with the mask fixed. So hev restarts the position counter for every option at the same value: the position right after the instruction.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1160 170" style="min-width: 900px" role="img" aria-label="kev numbers positions continuously through the options; hev gives every option the same starting position.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="11">
+        <text x="10" y="22" font-family="Sora, sans-serif" font-weight="600" font-size="13" fill="var(--kev)">kev positions</text>
+        <g transform="translate(10 32)" id="pos-kev"></g>
+        <text x="10" y="102" font-family="Sora, sans-serif" font-weight="600" font-size="13" fill="var(--hev)">hev positions</text>
+        <g transform="translate(10 112)" id="pos-hev"></g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>Position ids per token.</strong> Kev already restarts each <em>question</em> after the state (so questions are interchangeable). Hev additionally restarts each <em>option</em> after the instruction, so options are interchangeable too. Option 1 and option 3 see the same numbers.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 8 -->
+  <h2 id="readout">9. The readout: turning vectors into probabilities</h2>
+  <p>After the backbone, each question has one <span class="mono">decide</span> vector and K option vectors (the vector at each option's closing delimiter). A small extra network, the <strong>readout head</strong>, turns them into K scores. A <span class="term" title="Softmax: exponentiate each score and divide by the total, so the scores become positive numbers that sum to one.">softmax</span> turns the scores into probabilities. Hev has two heads to compare.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 330" role="img" aria-label="Pointer head: dot product between the decide vector and each option vector. Set head: a small transformer without positions over all the vectors first, then the same dot product.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
+        <!-- pointer -->
+        <text x="10" y="22" font-family="Sora, sans-serif" font-weight="600" font-size="14">PointerHead  (independent scoring)</text>
+        <g transform="translate(10 36)">
+          <rect x="0" y="0" width="90" height="26" rx="4" fill="var(--ink)"/><text x="45" y="18" text-anchor="middle" fill="var(--ground)">decide</text>
+          <rect x="0" y="40" width="90" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="45" y="58" text-anchor="middle">opt 1</text>
+          <rect x="0" y="72" width="90" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="45" y="90" text-anchor="middle">opt 2</text>
+          <rect x="0" y="104" width="90" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="45" y="122" text-anchor="middle">opt 3</text>
+          <text x="110" y="18" font-size="11" fill="var(--muted)">→ W_q · decide   (1024 → 256 numbers)</text>
+          <text x="110" y="58" font-size="11" fill="var(--muted)">→ W_k · opt 1</text>
+          <text x="110" y="90" font-size="11" fill="var(--muted)">→ W_k · opt 2</text>
+          <text x="110" y="122" font-size="11" fill="var(--muted)">→ W_k · opt 3</text>
+          <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+            <path d="M330 53 L 400 53"/><path d="M330 85 L 400 85"/><path d="M330 117 L 400 117"/>
+          </g>
+          <text x="410" y="57">score 1 = q · k1</text>
+          <text x="410" y="89">score 2 = q · k2</text>
+          <text x="410" y="121">score 3 = q · k3</text>
+          <line x1="560" y1="85" x2="620" y2="85" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text x="628" y="76" font-size="11" fill="var(--muted)">softmax</text>
+          <rect x="690" y="45" width="120" height="10" fill="var(--cell-off)"/><rect x="690" y="45" width="102" height="10" fill="var(--hev)"/><text x="818" y="54" font-size="11">.85</text>
+          <rect x="690" y="80" width="120" height="10" fill="var(--cell-off)"/><rect x="690" y="80" width="12" height="10" fill="var(--hev)"/><text x="818" y="89" font-size="11">.10</text>
+          <rect x="690" y="112" width="120" height="10" fill="var(--cell-off)"/><rect x="690" y="112" width="6" height="10" fill="var(--hev)"/><text x="818" y="121" font-size="11">.05</text>
+        </g>
+        <text x="10" y="186" font-size="12" fill="var(--muted)">Each option's score depends on that option and the decide vector only. Options never touch each other.</text>
+
+        <!-- set -->
+        <text x="10" y="222" font-family="Sora, sans-serif" font-weight="600" font-size="14">SetHead  (listwise, still order-blind)</text>
+        <g transform="translate(10 236)">
+          <rect x="0" y="0" width="90" height="26" rx="4" fill="var(--ink)"/><text x="45" y="18" text-anchor="middle" fill="var(--ground)">decide</text>
+          <rect x="96" y="0" width="70" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="131" y="18" text-anchor="middle">opt 1</text>
+          <rect x="172" y="0" width="70" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="207" y="18" text-anchor="middle">opt 2</text>
+          <rect x="248" y="0" width="70" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="283" y="18" text-anchor="middle">opt 3</text>
+          <line x1="326" y1="13" x2="366" y2="13" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <rect x="374" y="-8" width="230" height="42" rx="6" fill="var(--hev-soft)" stroke="var(--hev)"/>
+          <text x="489" y="10" text-anchor="middle" font-size="11">2 transformer layers over the set</text>
+          <text x="489" y="26" text-anchor="middle" font-size="11" fill="var(--muted)">no position numbers given</text>
+          <line x1="612" y1="13" x2="652" y2="13" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+          <text x="660" y="10" font-size="11">then the same</text>
+          <text x="660" y="26" font-size="11">pointer scoring</text>
+          <text x="0" y="60" font-size="12" fill="var(--muted)">Options can now see each other and adjust, but since no position numbers are given, shuffling the</text>
+          <text x="0" y="78" font-size="12" fill="var(--muted)">inputs just shuffles the outputs identically. That property is called permutation equivariance.</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>Two readouts, one guarantee.</strong> The pointer head is the strictest test: no interaction at all. The set head restores interaction between options, which the reconstruction of Jev found evidence for, without restoring any notion of first or last. Both are trained and compared.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 9 -->
+  <h2 id="score">10. Ordered levels: where order is meaning, not noise</h2>
+  <p>For a <span class="mono">score</span> question the levels are ordered on purpose: calm, frustrated, very angry. If hev were perfectly order-blind there, it could not know that "frustrated" sits between the other two. So for score questions only, a learned <strong>level embedding</strong> (one vector per position index) is added to each option vector at the readout. It starts at all zeros, so a fresh model is blind everywhere and learns to use order only where the labels reward it. The backbone stays untouched.</p>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 110" role="img" aria-label="For score questions a learned vector for level 0, 1, 2 is added to each option vector before the readout.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
+        <rect x="10" y="20" width="110" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="65" y="38" text-anchor="middle">h(calm)</text>
+        <rect x="10" y="56" width="110" height="26" rx="4" fill="var(--opt-soft)" stroke="var(--opt)"/><text x="65" y="74" text-anchor="middle">h(angry)</text>
+        <text x="132" y="38" font-size="14">+</text><text x="132" y="74" font-size="14">+</text>
+        <rect x="150" y="20" width="90" height="26" rx="4" fill="var(--surface)" stroke="var(--hev)"/><text x="195" y="38" text-anchor="middle">E[0]</text>
+        <rect x="150" y="56" width="90" height="26" rx="4" fill="var(--surface)" stroke="var(--hev)"/><text x="195" y="74" text-anchor="middle">E[2]</text>
+        <line x1="250" y1="51" x2="300" y2="51" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="308" y="46" font-size="12">into the readout head</text>
+        <text x="308" y="64" font-size="11" fill="var(--muted)">E is learned, zero at the start, used for score questions only</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>Symmetry broken on purpose, in one place.</strong> Choice and yes/no questions receive no index signal anywhere.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 10 -->
+  <h2 id="training">11. Training: what is learned, and from what</h2>
+  <p>The base model, Qwen3-0.6B-Base, already knows English. It is not retrained from scratch. Instead:</p>
+  <dl>
+    <dt>LoRA adapters</dt>
+    <dd>Small low-rank matrices bolted onto each attention and MLP projection. About 10 million trainable numbers against 600 million frozen ones. This is how the backbone learns what the delimiter tokens mean and how to summarise an option under the new mask. <span class="term" title="Low-Rank Adaptation: instead of updating a big weight matrix W, learn two thin matrices A and B and use W + AB. Cheap to train, easy to swap.">LoRA</span> is the same choice kev made, rank 16.</dd>
+    <dt>The readout head and level embedding</dt>
+    <dd>Trained from scratch alongside the adapters.</dd>
+    <dt>The loss</dt>
+    <dd><span class="term" title="Cross-entropy: minus the log of the probability the model gave to the correct answer. Being confidently wrong is punished hard, being honestly unsure is punished gently.">Cross-entropy</span> against the labelled correct option. This is a <em>proper scoring rule</em>: the best strategy under it is to report your true belief, which is why the probabilities come out calibrated rather than merely ranked. An optional extra term for score questions penalises being far from the right level, not just wrong.</dd>
+    <dt>The data</dt>
+    <dd>Kev's frozen decision-v2 training split: 3,432 records built from ten public classification datasets (banking intents, news topics, reviews, entailment, and so on), reshaped into the request format. During training the options are shuffled, "none of the above" is sometimes added as right or wrong, and irrelevant distractors are injected, all so the model learns to read evidence rather than memorise wording.</dd>
+    <dt>Temperature</dt>
+    <dd>After training, one scalar is fitted on a separate calibration split to sharpen or soften every distribution. Fit there, never touched again.</dd>
+  </dl>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 130" role="img" aria-label="Training loop: a record is packed, run through the frozen backbone with LoRA, scored by the head, compared to the label with cross-entropy, and the gradient updates only LoRA and the head.">
+      <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
+        <rect x="10" y="40" width="110" height="40" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="65" y="64" text-anchor="middle">pack record</text>
+        <line x1="120" y1="60" x2="160" y2="60" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="168" y="30" width="180" height="60" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="258" y="52" text-anchor="middle">backbone (frozen)</text>
+        <text x="258" y="72" text-anchor="middle" fill="var(--hev)">+ LoRA (trained)</text>
+        <line x1="348" y1="60" x2="388" y2="60" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="396" y="40" width="120" height="40" rx="6" fill="var(--hev-soft)" stroke="var(--hev)"/><text x="456" y="64" text-anchor="middle">head (trained)</text>
+        <line x1="516" y1="60" x2="556" y2="60" stroke="currentColor" stroke-width="1.5" marker-end="url(#arr)"/>
+        <rect x="564" y="40" width="130" height="40" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="629" y="64" text-anchor="middle">cross-entropy</text>
+        <text x="629" y="100" text-anchor="middle" font-size="11" fill="var(--muted)">vs the label</text>
+        <path d="M629 40 C 629 10, 300 10, 300 30" stroke="var(--hev)" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+        <text x="470" y="18" text-anchor="middle" font-size="11" fill="var(--hev)">gradient updates LoRA and head only</text>
+        <text x="760" y="64" font-size="11" fill="var(--muted)">2 epochs, ~2 h on</text>
+        <text x="760" y="80" font-size="11" fill="var(--muted)">an M4 Max (est.)</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><strong>Same recipe as kev</strong>, on purpose: same backbone, same adapter shape, same learning rate schedule, same data, same augmentation. The only thing that differs between the two runs is the mask, the decide position, and the head. That is what makes the comparison fair.</figcaption>
+  </figure>
+
+  <!-- ============================================================ 11 -->
+  <h2 id="experiment">12. The experiment, and what each outcome would mean</h2>
+  <p>Kev, on this exact data and recipe, scored 81.6% and 79.3% development accuracy across two seeds, and 62.0% and 62.1% on the out-of-distribution transfer set. Those are the numbers to sit next to.</p>
+  <table>
+    <thead><tr><th>Run</th><th>Question it answers</th><th>If it matches kev</th><th>If it falls short</th></tr></thead>
+    <tbody>
+      <tr><td><span class="hv">hev-pointer</span></td><td>Was order sensitivity free to remove?</td><td>Yes. Zero flips at no accuracy cost. Strongest possible result.</td><td>Options need to compare with each other somewhere. Look at which sources dropped: high-K ones like 77-way banking intents would confirm it.</td></tr>
+      <tr><td><span class="hv">hev-set</span></td><td>Is interaction enough, without order?</td><td>Options must interact but do not need order. Clean story.</td><td>Deep in-backbone comparison matters. Fallback: encode independently, shortlist the top few, re-score those with a set layer.</td></tr>
+      <tr><td>calibration</td><td>Are the probabilities still honest?</td><td>Expected, since the loss is unchanged.</td><td>Interesting on its own: the mask changed what the model can be uncertain about.</td></tr>
+      <tr><td>ablation</td><td>Does the level embedding earn its place?</td><td colspan="2">Zero it out and re-evaluate the score questions. If nothing changes, it can go.</td></tr>
+    </tbody>
+  </table>
+  <p>Every run also reports the flip rate under reordering. For hev it must be exactly zero, and reporting it is the check that the code matches the drawing above.</p>
+
+  <div class="callout">
+    <strong>After that, hev stops being an ablation and becomes its own model.</strong> The isolation design makes each option a self-contained branch, which is what the next ideas need: an <em>extract</em> question type where the options are spans of the state itself, and <em>dependent questions</em> where one question's decide vector may be read by another, giving if-then logic in a single pass.
+  </div>
+
+  <!-- ============================================================ glossary -->
+  <h2 id="glossary">Glossary</h2>
+  <dl>
+    <dt>Token</dt><dd>A chunk of text, roughly a short word or word-piece, that the model treats as one unit.</dd>
+    <dt>Vector / hidden state</dt><dd>A list of numbers (1,024 here) that represents a token in context. Written h(…) in the figures.</dd>
+    <dt>Attention</dt><dd>The operation by which one token's vector reads a weighted blend of other tokens' vectors.</dd>
+    <dt>Mask</dt><dd>The grid of which token may read which. Forbidden pairs contribute nothing.</dd>
+    <dt>Block-causal</dt><dd>A causal mask with extra cells removed so that groups (blocks) of tokens cannot read each other.</dd>
+    <dt>Position id / RoPE</dt><dd>The index stamped on each token so the model can tell order. Qwen encodes it as a rotation of the vector.</dd>
+    <dt>Prefill vs decoding</dt><dd>Prefill is reading the input in one parallel pass. Decoding is writing output one token at a time. These models only prefill.</dd>
+    <dt>Readout head</dt><dd>A small network on top of the backbone that turns vectors into scores.</dd>
+    <dt>Logit</dt><dd>A raw score before softmax. Higher means more likely.</dd>
+    <dt>Softmax</dt><dd>Turns a list of scores into probabilities that sum to one.</dd>
+    <dt>LoRA</dt><dd>Low-Rank Adaptation. Train two thin matrices per weight instead of the weight itself. Cheap and swappable.</dd>
+    <dt>Cross-entropy</dt><dd>The training loss: minus log of the probability given to the correct answer.</dd>
+    <dt>Calibration / ECE</dt><dd>Whether "90% confident" is right 90% of the time. ECE measures the gap, lower is better.</dd>
+    <dt>Permutation invariant</dt><dd>Output does not change when inputs are reordered.</dd>
+    <dt>Permutation equivariant</dt><dd>Reordering inputs reorders outputs the same way, and nothing else changes. What a readout over a list must be.</dd>
+    <dt>Argmax flip</dt><dd>The top answer changes when only the option order changes. Kev's measured rate: 7%. Hev's by construction: 0.</dd>
+  </dl>
+</div>
+
+<script>
+(function () {
+  // ---- the example sequence: state (2 tokens), instruction (2), 3 options (2 each), decide (1) --------------
+  const state = ["shoes", "late"];
+  const instr = ["which", "team?"];
+  const opts = [["returns", "refunds"], ["shipping", "delays"], ["billing", "charges"]];
+
+  function build(model) {
+    // returns [{label, cls, seg, sub, pos}]
+    const toks = [];
+    toks.push({ label: "<state>", cls: "sp", seg: 0, sub: 0 });
+    state.forEach(t => toks.push({ label: t, cls: "s", seg: 0, sub: 0 }));
+    const S = toks.length;
+    toks.push({ label: "<q>", cls: "sp", seg: 1, sub: 0 });
+    instr.forEach(t => toks.push({ label: t, cls: "i", seg: 1, sub: 0 }));
+    if (model === "hev") toks.push({ label: "decide", cls: "d", seg: 1, sub: 0 });
+    const I = toks.length - S; // instruction branch length (incl <q>, and decide for hev)
+    opts.forEach((o, j) => {
+      toks.push({ label: "<opt>", cls: "sp", seg: 1, sub: j + 1 });
+      o.forEach(t => toks.push({ label: t, cls: "o", seg: 1, sub: j + 1 }));
+      toks.push({ label: "</opt>", cls: "sp", seg: 1, sub: j + 1 });
+    });
+    if (model === "kev") toks.push({ label: "decide", cls: "d", seg: 1, sub: 0 });
+    // positions
+    let p = 0;
+    toks.forEach((t, i) => {
+      if (t.seg === 0) t.pos = i;
+    });
+    if (model === "kev") {
+      let q = S; toks.forEach(t => { if (t.seg !== 0) t.pos = q++; });
+    } else {
+      let q = S; toks.forEach(t => { if (t.seg !== 0 && t.sub === 0) t.pos = q++; });
+      const optStart = S + I;
+      let cur = -1, k = 0;
+      toks.forEach(t => { if (t.seg !== 0 && t.sub !== 0) { if (t.sub !== cur) { cur = t.sub; k = optStart; } t.pos = k++; } });
+    }
+    return toks;
+  }
+
+  function allow(model, a, b) { // query a, key b
+    if (b.idx > a.idx) return false;
+    if (b.seg === 0) return true;
+    if (b.seg !== a.seg) return false;
+    if (model === "kev") return true;
+    return b.sub === 0 || b.sub === a.sub;
+  }
+
+  // ---- token strips ---------------------------------------------------------------------------------------
+  function strip(id, toks) {
+    const el = document.getElementById(id);
+    toks.forEach(t => { const d = document.createElement("span"); d.className = "t " + t.cls; d.textContent = t.label; el.appendChild(d); });
+  }
+  const kevToks = build("kev"), hevToks = build("hev");
+  kevToks.forEach((t, i) => t.idx = i); hevToks.forEach((t, i) => t.idx = i);
+  strip("pack-kev", kevToks); strip("pack-hev", hevToks);
+
+  // ---- mask grids ----------------------------------------------------------------------------------------
+  const NS = "http://www.w3.org/2000/svg";
+  function el(name, attrs, text) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  const fillFor = { s: "var(--state-soft)", sp: "var(--line-soft)", i: "var(--instr-soft)", o: "var(--opt-soft)", d: "var(--ink)" };
+  const strokeFor = { s: "var(--state)", sp: "var(--line)", i: "var(--instr)", o: "var(--opt)", d: "var(--ink)" };
+
+  function grid(svgId, model, toks, other) {
+    const n = toks.length, cell = 22, pad = 86;
+    const svg = document.getElementById(svgId);
+    svg.setAttribute("viewBox", `0 0 ${pad + n * cell + 8} ${pad + n * cell + 8}`);
+    // column headers (keys)
+    toks.forEach((t, j) => {
+      const x = pad + j * cell + cell / 2;
+      svg.appendChild(el("rect", { x: pad + j * cell + 1, y: pad - 12, width: cell - 2, height: 8, rx: 2, fill: fillFor[t.cls], stroke: strokeFor[t.cls], "stroke-width": 0.8 }));
+      svg.appendChild(el("text", { x: x, y: pad - 16, "text-anchor": "start", "font-size": 9.5, "font-family": "IBM Plex Mono, monospace", fill: "currentColor", transform: `rotate(-60 ${x} ${pad - 16})` }, t.label));
+    });
+    // row headers (queries)
+    toks.forEach((t, i) => {
+      const y = pad + i * cell + cell / 2 + 3.5;
+      svg.appendChild(el("rect", { x: pad - 12, y: pad + i * cell + 1, width: 8, height: cell - 2, rx: 2, fill: fillFor[t.cls], stroke: strokeFor[t.cls], "stroke-width": 0.8 }));
+      svg.appendChild(el("text", { x: pad - 16, y: y, "text-anchor": "end", "font-size": 9.5, "font-family": "IBM Plex Mono, monospace", fill: "currentColor" }, t.label));
+    });
+    // cells
+    toks.forEach((a, i) => toks.forEach((b, j) => {
+      const on = allow(model, a, b);
+      svg.appendChild(el("rect", { x: pad + j * cell, y: pad + i * cell, width: cell, height: cell, fill: on ? "var(--cell-on)" : "var(--cell-off)", stroke: "var(--surface)", "stroke-width": 1 }));
+      // mark cells that differ between the two rules: option reading a sibling option
+      if (on && model === "kev" && a.seg !== 0 && a.sub !== 0 && b.sub !== 0 && b.sub !== a.sub) {
+        svg.appendChild(el("circle", { cx: pad + j * cell + cell / 2, cy: pad + i * cell + cell / 2, r: 3.5, fill: "var(--kev)" }));
+      }
+      if (!on && model === "hev" && a.seg !== 0 && a.sub !== 0 && b.sub !== 0 && b.sub !== a.sub && j <= i) {
+        svg.appendChild(el("circle", { cx: pad + j * cell + cell / 2, cy: pad + i * cell + cell / 2, r: 3.5, fill: "none", stroke: "var(--hev)", "stroke-width": 1.5 }));
+      }
+    }));
+    // axis words
+    svg.appendChild(el("text", { x: pad + n * cell / 2, y: 12, "text-anchor": "middle", "font-size": 10.5, fill: "var(--muted)", "font-family": "IBM Plex Sans, sans-serif" }, "keys: what may be read"));
+    svg.appendChild(el("text", { x: 12, y: pad + n * cell / 2, "text-anchor": "middle", "font-size": 10.5, fill: "var(--muted)", "font-family": "IBM Plex Sans, sans-serif", transform: `rotate(-90 12 ${pad + n * cell / 2})` }, "queries: who is reading"));
+  }
+  grid("grid-kev", "kev", kevToks);
+  grid("grid-hev", "hev", hevToks);
+
+  // ---- causal 6x6 ----------------------------------------------------------------------------------------
+  (function () {
+    const g = document.getElementById("causal6"), cell = 22, n = 6;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      g.appendChild(el("rect", { x: j * cell, y: i * cell, width: cell, height: cell, fill: j <= i ? "var(--cell-on)" : "var(--cell-off)", stroke: "var(--surface)" }));
+    }
+    for (let k = 0; k < n; k++) {
+      g.appendChild(el("text", { x: k * cell + cell / 2, y: -4, "text-anchor": "middle", "font-size": 10, fill: "currentColor", "font-family": "IBM Plex Mono, monospace" }, String(k + 1)));
+      g.appendChild(el("text", { x: -6, y: k * cell + cell / 2 + 3.5, "text-anchor": "end", "font-size": 10, fill: "currentColor", "font-family": "IBM Plex Mono, monospace" }, String(k + 1)));
+    }
+    g.appendChild(el("rect", { x: 0, y: 3 * cell, width: n * cell, height: cell, fill: "none", stroke: "var(--hev)", "stroke-width": 2 }));
+  })();
+
+  // ---- positions figure ------------------------------------------------------------------------------------
+  function posRow(id, toks) {
+    const g = document.getElementById(id), w = 56, h = 24;
+    toks.forEach((t, i) => {
+      const x = i * (w + 4);
+      g.appendChild(el("rect", { x: x, y: 0, width: w, height: h, rx: 4, fill: fillFor[t.cls], stroke: strokeFor[t.cls], "stroke-width": 1 }));
+      g.appendChild(el("text", { x: x + w / 2, y: 16, "text-anchor": "middle", "font-size": 9.5, fill: t.cls === "d" ? "var(--ground)" : "currentColor", "font-family": "IBM Plex Mono, monospace" }, t.label));
+      g.appendChild(el("text", { x: x + w / 2, y: h + 16, "text-anchor": "middle", "font-size": 12, "font-weight": 500, fill: t.seg !== 0 && t.sub !== 0 ? (id === "pos-hev" ? "var(--hev)" : "var(--kev)") : "currentColor", "font-family": "IBM Plex Mono, monospace" }, String(t.pos)));
+    });
+  }
+  posRow("pos-kev", kevToks); posRow("pos-hev", hevToks);
+})();
+</script>
