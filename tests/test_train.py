@@ -7,7 +7,8 @@ import torch.nn.functional as F
 
 from hev.data import EVAL_ONLY
 from hev.model import DecisionModel
-from hev.train import accumulation_records, make_scheduler, prepare_output, question_loss, validate_args, validate_training_records
+from hev.suite import object_digest, source_hashes
+from hev.train import accumulation_records, make_scheduler, prepare_output, question_loss, runtime_provenance, validate_args, validate_training_records
 
 
 def args(**overrides):
@@ -114,3 +115,17 @@ def test_readout_checkpoint_includes_level_embedding(tiny_backbone):
     other = DecisionModel(backbone=tiny_backbone, head="pointer")
     with pytest.raises(ValueError, match="checkpoint head"):
         other.load_readout_state_dict(state)
+
+
+def test_provenance_hashes_are_deterministic_and_exclude_runs():
+    assert object_digest({"b": 2, "a": 1}) == object_digest({"a": 1, "b": 2})
+    first, second = source_hashes(), source_hashes()
+    assert first == second and "hev/train.py" in first and "uv.lock" in first
+    assert not any(path.startswith("runs/") for path in first)
+
+
+def test_runtime_provenance_records_code_environment_and_device():
+    provenance = runtime_provenance("cpu")
+    assert provenance["device"] == "cpu" and provenance["dtype"] == "fp32"
+    assert provenance["git"]["commit"] and isinstance(provenance["source_hashes"], dict)
+    assert all(provenance["packages"].values())

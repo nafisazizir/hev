@@ -3,10 +3,13 @@ import argparse
 import json
 import math
 import os
+import platform
 import random
 import resource
+import subprocess
 import sys
 import time
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import torch
@@ -14,7 +17,7 @@ import torch.nn.functional as F
 
 from .data import EVAL_ONLY, augment, materialize, source_seed
 from .model import DecisionModel, encode, load_tokenizer
-from .suite import base_revision, digest, load_split, manifest, write_json
+from .suite import ROOT, base_revision, digest, load_split, manifest, object_digest, source_hashes, write_json
 
 
 def question_loss(logits, question, device, ord_w=0.0):
@@ -67,6 +70,42 @@ def prepare_output(path):
 
 def default_device():
     return "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+def package_versions():
+    values = {}
+    for package in ("torch", "transformers", "peft", "numpy"):
+        try:
+            values[package] = version(package)
+        except PackageNotFoundError:
+            values[package] = None
+    return values
+
+
+def git_state(root=ROOT):
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=root, text=True, stderr=subprocess.DEVNULL
+        ).strip()
+        dirty = bool(subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=root, text=True, stderr=subprocess.DEVNULL
+        ).strip())
+        return {"commit": commit, "dirty": dirty}
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return {"commit": "unknown", "dirty": None}
+
+
+def runtime_provenance(device):
+    return {
+        "source_hashes": source_hashes(),
+        "git": git_state(),
+        "platform": platform.platform(),
+        "python": sys.version,
+        "packages": package_versions(),
+        "device": device,
+        "gpu": torch.cuda.get_device_name(0) if device == "cuda" else None,
+        "dtype": "fp32",
+    }
 
 
 def sync(device):
@@ -141,6 +180,7 @@ def train(args, output):
     suite_sha256 = digest(suite / "manifest.json")
     device = args.device or default_device()
     resolved = {**vars(args), "device": device}
+    provenance = runtime_provenance(device)
     config = {
         "status": "configured",
         "args": resolved,
@@ -148,7 +188,9 @@ def train(args, output):
         "base_revision": revision,
         "holdout_sources": suite_manifest.get("holdout_sources", []),
         "objective": "record-mean cross-entropy plus optional normalized ranked probability score",
+        "provenance": provenance,
     }
+    config["config_sha256"] = object_digest({key: value for key, value in config.items() if key != "config_sha256"})
     write_json(output / "training_config.json", config)
 
     torch.manual_seed(args.seed)
@@ -261,6 +303,10 @@ def train(args, output):
         metrics["status"] = "failed_loss_gate"
         write_json(output / "training_metrics.json", metrics)
         raise ValueError(f"fixed training objective did not decrease: {before} -> {after}")
+    if source_hashes() != provenance["source_hashes"] or digest(suite / "manifest.json") != suite_sha256:
+        metrics["status"] = "failed_provenance_gate"
+        write_json(output / "training_metrics.json", metrics)
+        raise ValueError("source or suite changed during training")
 
     model.lm.save_pretrained(output)
     tokenizer.save_pretrained(output)
@@ -271,6 +317,8 @@ def train(args, output):
         "lora": args.lora,
         "suite_sha256": suite_sha256,
         "args": resolved,
+        "training_config_sha256": config["config_sha256"],
+        "provenance": provenance,
     }, output / "readout.pt")
     write_json(output / "training_metrics.json", metrics)
     print(f"saved {output}", flush=True)

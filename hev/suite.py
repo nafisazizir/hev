@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
 SPLITS = ("train", "calibration", "development", "test")
 
 
@@ -18,6 +19,17 @@ def digest(path):
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def object_digest(value):
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def source_hashes(root=ROOT):
+    root = Path(root)
+    paths = list((root / "hev").glob("*.py")) + [root / "pyproject.toml", root / "uv.lock"]
+    return {str(path.relative_to(root)): digest(path) for path in sorted(paths) if path.exists()}
 
 
 def write_json(path, value):

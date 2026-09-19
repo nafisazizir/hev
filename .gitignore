@@ -8,7 +8,8 @@ dist/
 build/
 
 # training outputs (each run is a directory; keep results ledgers, not weights)
-runs/*/
+runs/*/*
+!runs/*/result.json
 !runs/.gitkeep
 *.safetensors
 *.pt

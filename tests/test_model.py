@@ -148,6 +148,21 @@ def test_score_levels_break_invariance(models, tok):
             m.level.weight.zero_()
 
 
+def test_level_embedding_never_changes_non_score_questions(models, tok):
+    m = models["pointer"]
+    encoded = encode(tok, rec(q("which?", ["a", "b", "c"]), q("yes?", ["no", "yes"], "noul")))
+    before = m.probs(encoded)
+    with torch.no_grad():
+        m.level.weight.normal_(0, 1.0)
+    try:
+        after = m.probs(encoded)
+        for left, right in zip(before, after):
+            assert torch.equal(left, right)
+    finally:
+        with torch.no_grad():
+            m.level.weight.zero_()
+
+
 def test_batch_invariance(models, tok):
     m = models["set"]
     r1 = rec(q("which?", ["a", "b", "c"]))

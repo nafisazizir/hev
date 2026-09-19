@@ -25,11 +25,16 @@ def test_delimiters_exist_and_are_unforgeable(qwen_tok):
     assert not (set(ids) | set(qwen_tok.all_special_ids)) & set(user_tokens(qwen_tok, hostile))
 
 
-@pytest.mark.parametrize("suite", ["decision-v2", "transfer-v2"])
-def test_every_development_record_fits_kev_limits(qwen_tok, suite):
-    """hev packs the same tokens as kev with <decide> moved, so every admitted record must still encode strictly."""
+@pytest.mark.parametrize("suite,split", [
+    ("decision-v2", "train"),
+    ("decision-v2", "calibration"),
+    ("decision-v2", "development"),
+    ("transfer-v2", "development"),
+])
+def test_every_m2_record_fits_kev_limits(qwen_tok, suite, split):
+    """hev packs the same tokens as kev with <decide> moved, so every admitted M2 record must encode strictly."""
     longest = 0
-    for r in load_split(ROOT / "evals" / suite, "development"):
+    for r in load_split(ROOT / "evals" / suite, split):
         enc = encode(qwen_tok, materialize(r), strict=True)
         assert not enc["state_truncated"]
         longest = max(longest, len(enc["ids"]))

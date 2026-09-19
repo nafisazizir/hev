@@ -8,11 +8,11 @@ hev is a research project by Nafis, started 2026-09-19. It follows the shape of 
 
 In kev, a question's options are packed one after another under a causal mask, so option 3's hidden state has already read options 1 and 2. That is where option-order sensitivity comes from, and kev measures it at 7% argmax flips and a p90 probability spread of 0.25 under reordering. hev gives every option its own branch under the block mask, with all options of a question sharing the same start position, so the backbone representation of an option is a function of (state, instruction, that option's text) and nothing else. Order can then only enter through the readout, and the readouts are permutation-equivariant by construction. Flip rate is zero by design. The experiment is what that costs in accuracy, and whether a small listwise set-readout recovers it.
 
-Full design: [docs/DESIGN.md](docs/DESIGN.md). Illustrated walkthrough with the end-to-end pipeline and computed mask grids: [docs/explainer.html](docs/explainer.html) (open in a browser). Roadmap: [PLAN.md](PLAN.md). Decision log: [docs/DECISIONS.md](docs/DECISIONS.md).
+Full design: [docs/DESIGN.md](docs/DESIGN.md). Illustrated walkthrough with the end-to-end pipeline and computed mask grids: [docs/explainer.html](docs/explainer.html) (open in a browser). Roadmap: [PLAN.md](PLAN.md). Results: [docs/RESULTS.md](docs/RESULTS.md). Decision log: [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Status
 
-M1 complete. The model, mask and readout heads are covered by offline architectural tests; the pinned Qwen3 tokenizer passes the Hub context-limit checks; and both PointerHead and SetHead have immutable MPS smoke checkpoints with decreasing fixed-set loss, complete development evaluation and zero permutation flips. Smoke accuracy is a pipeline check, not a research result. See PLAN.md for linked artifacts and M2.
+M2 complete. On the predeclared seed-0 development comparison, PointerHead reached 80.67% on decision-v2 and 61.07% on transfer-v2, versus kev seed 0 at 81.58% and 61.96%. It had zero Choice argmax flips across six evaluated orders on both suites, with p90 probability spreads below `3e-6`. SetHead reached 80.92% and 60.71%, but its paired decision improvement over PointerHead was only 0.25 points with a 95% CI crossing zero. H1 and H3 are supported; H2 is inconclusive/not needed; the D6 fallback is not triggered. [Full results and limitations](docs/RESULTS.md), [aggregate artifact](runs/m2-comparison-s0/result.json).
 
 ## Layout
 
@@ -21,10 +21,11 @@ hev/api.py       TypeSafe-compatible request/response schema (byte-compatible wi
 hev/model.py     packing, block mask, PointerHead / SetHead, DecisionModel
 hev/data.py      labelled request -> internal record; augmentation ported from kev
 hev/suite.py     checksummed frozen-suite loader; locked test split
+hev/compare.py   M2 artifact validation, paired bootstrap, predeclared decisions
 evals/           frozen suites copied from kev (see evals/README.md for provenance)
 tests/           offline tests: fake tokenizer + tiny random Qwen2 backbone
-docs/            DESIGN, DECISIONS, KEV (what to reuse from kev and when), EVALS
-runs/            training outputs (gitignored except ledgers)
+docs/            DESIGN, DECISIONS, RESULTS, KEV, EVALS
+runs/            training outputs (gitignored except result ledgers)
 ```
 
 ## Setup

@@ -28,13 +28,52 @@ uv run pytest
 uv run pytest -k invariance -v
 ```
 
-Hardware: Apple M4 Max, 36 GB. Base models are not cached yet; first real run downloads Qwen3-0.6B-Base (about 1.2 GB).
+M2 commands (completed 2026-09-20; retained for reproducibility). The listed output directories are immutable and already exist, so do not rerun these commands with the same paths:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 uv run pytest -p no:cacheprovider
+PYTHONDONTWRITEBYTECODE=1 HF_HUB_OFFLINE=1 HEV_HUB_TESTS=1 uv run pytest -p no:cacheprovider tests/test_hub.py -v
+
+uv run python -m hev.train --suite evals/decision-v2 --out runs/m2-pointer-s0 --head pointer --device mps --seed 0 --epochs 2 --lr 2e-4 --lora 16 --batch 1 --accum 8 --ord-w 0 --p-none 0.1 --p-none-distract 0.12 --p-distract 0.15 --require-loss-decrease
+uv run python -m hev.train --suite evals/decision-v2 --out runs/m2-set-s0 --head set --device mps --seed 0 --epochs 2 --lr 2e-4 --lora 16 --batch 1 --accum 8 --ord-w 0 --p-none 0.1 --p-none-distract 0.12 --p-distract 0.15 --require-loss-decrease
+
+uv run python -m hev.evaluate \
+  --run runs/m2-pointer-s0 \
+  --suite evals/decision-v2 \
+  --transfer evals/transfer-v2 \
+  --device mps \
+  --seed 1 \
+  --permutations 6 \
+  --bootstrap-samples 10000 \
+  --level-zero-ablation
+
+uv run python -m hev.evaluate \
+  --run runs/m2-set-s0 \
+  --suite evals/decision-v2 \
+  --transfer evals/transfer-v2 \
+  --device mps \
+  --seed 1 \
+  --permutations 6 \
+  --bootstrap-samples 10000
+
+uv run python -m hev.compare \
+  --pointer runs/m2-pointer-s0 \
+  --set runs/m2-set-s0 \
+  --kev-seed0 /Users/nafis/Documents/personal/kev/runs/ablation-v2/06-trial-6/result.json \
+  --kev-seed1 /Users/nafis/Documents/personal/kev/runs/ablation-v2/07-trial-7/result.json \
+  --out runs/m2-comparison-s0 \
+  --bootstrap-samples 10000 \
+  --seed 20260919
+```
+
+Hardware: Apple M4 Max, 36 GB. The pinned Qwen3-0.6B-Base tokenizer and model are cached from M1.
 
 ## Where things are
 
 | Need | Look at |
 |---|---|
 | Roadmap and current milestone | PLAN.md |
+| M2 results and conclusions | docs/RESULTS.md, runs/m2-comparison-s0/result.json |
 | Mask rule, positions, heads, invariance argument | docs/DESIGN.md |
 | Illustrated walkthrough for newcomers (open in a browser) | docs/explainer.html |
 | Why each choice was made, alternatives rejected | docs/DECISIONS.md |

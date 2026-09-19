@@ -32,21 +32,23 @@ Exit met by two immutable Qwen3-0.6B-Base MPS runs on `evals/smoke-v1`: [Pointer
 - [x] Pointer smoke: fixed objective 1.970 → 0.213; development accuracy 50.0%; flip rate 0; p90 correct-probability spread 0.000006; packed max difference 0.000007; 15.6 s training; 3.23 GB peak MPS allocation. [Metrics](runs/smoke-pointer-s0/training_metrics.json), [evaluation](runs/smoke-pointer-s0/eval.json).
 - [x] Set smoke: fixed objective 1.807 → 0.153; development accuracy 30.0%; flip rate 0; p90 correct-probability spread 0.000007; packed max difference 0.000003; 13.9 s training; 3.25 GB peak MPS allocation. [Metrics](runs/smoke-set-s0/training_metrics.json), [evaluation](runs/smoke-set-s0/eval.json).
 
-### M2. First real comparison
+### M2. First real comparison  (done 2026-09-20)
 
-Exit: hev-pointer and hev-set trained on decision-v2 train, evaluated on decision-v2 development and transfer-v2 development, with kev's numbers side by side and bootstrap CIs.
+Exit met by the immutable [PointerHead result](runs/m2-pointer-s0/result.json), [SetHead result](runs/m2-set-s0/result.json), and [aggregate comparison](runs/m2-comparison-s0/result.json). Both runs completed the predeclared recipe and full development coverage without test access. H1 and H3 were supported; H2 was inconclusive because PointerHead's loss to kev seed 0 was only 0.92 percentage points, below the material-loss threshold. SetHead improved decision accuracy by 0.25 points with a paired 95% CI of −1.17 to +1.58 points, so it showed no supported advantage. Full tables and interpretation: [docs/RESULTS.md](docs/RESULTS.md).
 
-- [ ] Train both heads, seed 0, kev's v2 recipe (2 epochs, r=16, lr 2e-4, effective batch 8, Qwen3-0.6B-Base pinned to the suite's revision).
-- [ ] Temperature fit on calibration only, applied unchanged to transfer.
-- [ ] Ablation: `PointerHead` with Score level embedding zeroed, to confirm the embedding is doing work on ordinal tasks.
-- [ ] Write results to `runs/<name>/result.json` and summarise in docs/RESULTS.md with links.
-- [ ] Decide: does H1 hold? Does H2 hold? If accuracy loss is large (more than about 5 points) on high-K sources like banking77, look at DECISIONS.md D6 for the fallback.
+- [x] Train both heads, seed 0, kev's v2 recipe (2 epochs, r=16, lr 2e-4, effective batch 8, Qwen3-0.6B-Base pinned to the suite's revision). [Comparison](runs/m2-comparison-s0/result.json)
+- [x] Temperature fit on calibration only, applied unchanged to transfer. [Pointer](runs/m2-pointer-s0/result.json), [Set](runs/m2-set-s0/result.json)
+- [x] Ablation: `PointerHead` with Score level embedding zeroed. The embedding changed probabilities but was not proven useful. [Ablation](runs/m2-pointer-s0/result.json)
+- [x] Write immutable result ledgers and summarise them in [docs/RESULTS.md](docs/RESULTS.md).
+- [x] Decide H1/H2/H3 and D6 under the predeclared rules. H1 supported; H2 inconclusive/not needed; H3 supported for both heads; D6 not triggered. [Decision artifact](runs/m2-comparison-s0/result.json)
 
 ### M3. Serve and compare with Jev
 
+PointerHead is the default selected by M2: it is simpler than SetHead, retained near-kev accuracy, and SetHead showed no supported gain. [M2 evidence](runs/m2-comparison-s0/result.json)
+
 - [ ] `hev/serve.py`: FastAPI `POST /v1/systemone` plus `/v1/models`, same shapes as kev so the TypeSafe SDK and kev's playground work with a base_url change.
 - [ ] Port kev's Jev client if a live three-way comparison is wanted (needs a TypeSafe key via AI Gateway; kev/jev.py).
-- [ ] Second seed for whichever configuration looks best. Never report only the better seed.
+- [ ] Replicate PointerHead with a second predeclared seed. Report both seeds, never only the better one.
 
 ### M4. Beyond the first result (pick after M2)
 

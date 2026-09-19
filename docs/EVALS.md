@@ -34,9 +34,11 @@ Kev also has decision-v1, transfer-v1, public-pool-v4, v3/ and v4/ (compositiona
 
 ## Metrics to report (same definitions as kev so numbers compare)
 
-- Accuracy, NLL, Brier per source and per question type; macro over sources.
+Headline metrics are computed on `variant == "clean"` questions only. The `none_present`, `none_absent` and `permuted` variants are diagnostic populations: they are reported separately and never enter headline accuracy/NLL/Brier/ECE. Temperature is fit once on clean calibration rows of the training suite (unweighted macro-task NLL over a deterministic 81-point log grid in [0.25, 4.0]) and the same scalar is applied unchanged to every other split or suite, including transfer and ablation evaluations.
+
+- Accuracy, NLL, Brier per source and per question type; micro on clean rows plus unweighted macro-source and macro-task summaries, each labeled.
 - ECE with 10 equal-width bins on the top probability, raw and after temperature fit on calibration.
 - Score questions: also MAE of the expected level and ranked probability score.
-- Permutation study on choice with K ≥ 3: argmax flip rate and p90 spread of the correct option's probability over six orders. For hev this must be 0 and ~1e-6; report it anyway as the check that the implementation matches the design.
-- Contrastive pairs: both-correct rate for relevant pairs, invariance rate for irrelevant pairs, none-option mass and selection reported separately.
-- Bootstrap CIs clustered by `_meta.group_id`.
+- Permutation study on choice with K ≥ 3: argmax flip rate and p90 spread of the correct option's probability over six orders, aligned by semantic option key. For hev this must be 0 and ~1e-6; report it anyway as the check that the implementation matches the design.
+- Contrastive pairs: complete `pair_id` siblings only — relevant-pair flip rate and both-correct rate, invariance and both-correct rates for invariant pairs; duplicate or incomplete pairs are rejected. None diagnostics report count, mean none mass, none selection rate, and accuracy separately for none-present and none-absent.
+- Bootstrap CIs: deterministic percentile bootstrap, 10,000 draws, fixed seed 20260919. The resampling unit is the `(source, group_id)` cluster so sibling questions and contrastive siblings stay together; draws are stratified by source — each draw resamples that source's clusters with replacement at the original count and includes every row in each sampled cluster. Clean rows only unless the metric explicitly names an ablation subset. Paired model intervals require identical `(id, question)`, group, keys and label populations and reuse the same sampled clusters for both sides.
