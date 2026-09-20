@@ -81,3 +81,11 @@ Do not build the D6 shortlist fallback: both heads remained above its banking77 
 The predeclared seed-1 replication reached 79.33% decision-v2 and 60.36% transfer-v2 accuracy, versus 80.67% and 61.07% for seed 0. Both paired accuracy intervals crossed zero, and both seeds passed every order, packing, and coverage check. Keep PointerHead as the default and report the two-seed mean and range rather than selecting seed 0 as the headline model. [Replication aggregate](../runs/m3-pointer-replication-v2/result.json)
 
 Serving applies each run's calibration-only fitted temperature and exposes the TypeSafe-compatible `/v1/systemone` and `/v1/models` shapes. A live Jev comparison remains optional and must not be implied without an explicit AI Gateway run artifact.
+
+## D12. Release a development-only research preview  (2026-09-20)
+
+Prepare `v0.1.0` for open source without opening the locked test. The contribution is the option-isolation mechanism and its reproduced development evidence, not a production-readiness or state-of-the-art claim.
+
+Publish both predeclared PointerHead checkpoints as separate `seed-0` and `seed-1` revisions in one future Hub repository. Do not select the higher-accuracy seed, publish SetHead as the default, or use a locked-test result to market the preview. Keep weights out of git; require successful training/evaluation status and exact provenance agreement before upload.
+
+Keep detailed coding-agent instructions under `.devin/agent-notes/`, with only a standard root pointer. Credit TypeSafe, Archer Hume, Jared Palmer and kev, Qwen, dataset contributors, and Devin/Cognition explicitly. No affiliation or endorsement is implied.

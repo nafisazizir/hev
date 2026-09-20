@@ -128,6 +128,15 @@ def test_load_run_accepts_matching_provenance(state, tmp_path, monkeypatch):
     assert serve.STATE["run"] == str(tmp_path) and serve.STATE["temperature"] == 1.5
 
 
+def test_load_run_preserves_hub_source(state, tmp_path, monkeypatch):
+    predictor = stub_local_predictor(monkeypatch)
+    result_json(tmp_path)
+    monkeypatch.setattr(serve, "resolve_run", lambda ref: tmp_path)
+    serve.load_run("hf://OWNER/hev-0.6b@seed-0", "cpu")
+    assert serve.STATE["run"] == "hf://OWNER/hev-0.6b@seed-0"
+    assert serve.STATE["predictor"] is predictor
+
+
 def test_load_run_rejects_base_mismatch(state, tmp_path, monkeypatch):
     stub_local_predictor(monkeypatch)
     result_json(tmp_path, base="other-base")

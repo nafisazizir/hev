@@ -1,19 +1,20 @@
 """FastAPI sidecar for the playground: loads one evaluated checkpoint, exposes prefill-only decisions.
 
 Run: uv run --extra serve python -m hev.serve --run runs/m2-pointer-s0 --port 8008
+     --run also accepts hf://OWNER/hev-0.6b@seed-0
 """
 import argparse
 import json
 import math
 import threading
 import time
-from pathlib import Path
 
 import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import MODEL_NAME, SystemOneRequest, output_tokens, to_answers, to_record
+from .checkpoint import resolve_run
 from .evaluate import LocalPredictor, default_device, scaled_probabilities, sync
 from .model import encode
 
@@ -75,9 +76,10 @@ def models():
 
 def load_run(run, device):
     """Load a checkpoint and its evaluated calibration temperature into STATE."""
-    run = Path(run)
-    predictor = LocalPredictor(run, device)
-    result = json.loads((run / "result.json").read_text())
+    source = str(run)
+    resolved = resolve_run(run)
+    predictor = LocalPredictor(resolved, device)
+    result = json.loads((resolved / "result.json").read_text())
     if result.get("status") != "success":
         raise ValueError("run evaluation did not complete successfully")
     if result.get("test_evaluated") is not False:
@@ -97,12 +99,13 @@ def load_run(run, device):
     temperature = result.get("temperature_fit", {}).get("temperature")
     if temperature is None or not math.isfinite(temperature) or temperature <= 0:
         raise ValueError("run has no finite positive fitted temperature")
-    STATE.update({"run": str(run), "predictor": predictor, "temperature": temperature})
+    STATE.update({"run": source, "predictor": predictor, "temperature": temperature})
 
 
 def main():
     parser = argparse.ArgumentParser(description="serve one evaluated hev checkpoint")
-    parser.add_argument("--run", default="runs/m2-pointer-s0")
+    parser.add_argument("--run", default="runs/m2-pointer-s0",
+                        help="local run directory or hf://OWNER/hev-0.6b@seed-0")
     parser.add_argument("--port", type=int, default=8008)
     parser.add_argument("--device", choices=["cpu", "mps", "cuda"], default=None)
     args = parser.parse_args()

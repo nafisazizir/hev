@@ -50,6 +50,12 @@ The optional live comparison is also complete against a direct TypeSafe snapshot
 
 PointerHead is the default selected by M2: it is simpler than SetHead, retained near-kev accuracy, and SetHead showed no supported gain. [M2 evidence](runs/m2-comparison-s0/result.json)
 
+### R1. Open-source research preview  (prepared 2026-09-20)
+
+The local `v0.1.0` release is prepared as a development-only research preview: Apache-2.0 license and third-party notices, model card, citation metadata, offline CI, source/wheel builds, local-or-Hub checkpoint loading, and provenance-gated Hub publication tooling. Both predeclared PointerHead checkpoints are prepared as `seed-0` and `seed-1` revisions in one future model repository; neither is labelled best. The locked test split remains untouched. No Git remote, public repository, checkpoint upload or release tag was created during preparation.
+
+Publication validation: `116 passed, 5 skipped`; sdist and wheel built; both immutable PointerHead runs passed no-network publication dry runs. Public namespace selection, repository creation, uploads and release tagging remain owner actions.
+
 Predeclared replication protocol (2026-09-20, before the run): train PointerHead with seed 1 and the exact M2 recipe (2 epochs, r=16, lr 2e-4, effective batch 8, Qwen3-0.6B-Base at the suite-pinned revision, and the same augmentation probabilities). Evaluate decision-v2 and transfer-v2 development with evaluation seed 1, six permutations, 10,000 bootstrap draws, and no test access. The immutable model path is `runs/m3-pointer-s1`. The aggregate reports seed 0 and seed 1 separately, their arithmetic mean and range, and paired seed-1-minus-seed-0 intervals as descriptive variability. Replication mechanism checks are complete coverage, zero Choice argmax flips, p90 probability spread at most `1e-4`, and packed-vs-separate maximum difference at most `1e-4`; there is no accuracy-based seed-selection rule. The first aggregate attempt was retained as a failure because `evaluate.py` gained result-protocol metadata after seed 0. The successful `runs/m3-pointer-replication-v2` artifact admits only the two audited hashes, records that exception, and verifies identical model, data, suite, and training source hashes.
 
 - [x] `hev/serve.py`: FastAPI `POST /v1/systemone` plus `/v1/models`, same shapes as kev so the TypeSafe SDK and kev's playground work with a base_url change.
