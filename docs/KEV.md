@@ -8,21 +8,21 @@ kev is a LoRA adapter (r=16) plus a 256-dim pointer head on Qwen 0.5B/0.6B. A re
 
 ## File map
 
-| kev file | What | hev status |
+| kev file | What | Hev status |
 |---|---|---|
 | `kev/model.py` | encode, block-causal mask, PointerHead, DecisionModel | **Rewritten** in `hev/model.py` with option-level isolation. Same delimiters and limits. |
 | `kev/api.py` | TypeSafe schema, render, to_record, to_answers | **Copied** to `hev/api.py`, `qtype` added to records. |
 | `kev/data.py` | dataset conversion, augment, none_pair, materialize, source policy | **Partly ported** to `hev/data.py`: materialize, augment, none_pair, policy. Dataset download/build not ported. |
 | `kev/suite.py` | freeze suites, load_split with checksums, contrast_cases | **load_split ported** to `hev/suite.py`. freeze and contrast_cases not ported. |
-| `kev/train.py` | training loop, perm-KL, ranked probability score, batching | Not ported. M1 writes hev's own; reuse the loss definitions. |
-| `kev/evaluate.py` | accuracy/ECE/permutation/IIA/isolation/latency studies | Metric functions ported at M1; at M2 the clean/variant row and metric summaries are adapted into `hev/evaluate.py` with attribution. Model inference and orchestration remain hev-specific. |
-| `kev/benchmark.py`, `kev/compare.py`, `kev/plot.py` | bootstrap CIs, kev-vs-jev comparison, figures | Grouped bootstrap logic adapted into `hev/evaluate.py`/`hev/compare.py` at M2 with attribution. Kev v2 aggregate result artifacts lack per-example rows, so kev seed-0/seed-1 numbers enter only as hash-verified point baselines; no paired hev-vs-kev CI is possible. Plotting not ported. |
+| `kev/train.py` | training loop, perm-KL, ranked probability score, batching | Not ported. M1 writes Hev's own; reuse the loss definitions. |
+| `kev/evaluate.py` | accuracy/ECE/permutation/IIA/isolation/latency studies | Metric functions ported at M1; at M2 the clean/variant row and metric summaries are adapted into `hev/evaluate.py` with attribution. Model inference and orchestration remain Hev-specific. |
+| `kev/benchmark.py`, `kev/compare.py`, `kev/plot.py` | bootstrap CIs, kev-vs-jev comparison, figures | Grouped bootstrap logic adapted into `hev/evaluate.py`/`hev/compare.py` at M2 with attribution. Kev v2 aggregate result artifacts lack per-example rows, so kev seed-0/seed-1 numbers enter only as hash-verified point baselines; no paired Hev-vs-kev CI is possible. Plotting not ported. |
 | `kev/jev.py` | client for TypeSafe's Jev via AI Gateway | **Rewritten** at M3 as `hev/jev.py` against TypeSafe's direct API, with immutable calibration/development ledgers, bounded cost/calls, rounded-probability normalization, and version capture. |
-| `kev/serve.py` | FastAPI `/v1/systemone`, `/permute`, `/separate` | M3 writes hev's own `/v1/systemone` and `/v1/models` compatibility routes; playground-only probe routes are not ported. |
+| `kev/serve.py` | FastAPI `/v1/systemone`, `/permute`, `/separate` | M3 writes Hev's own `/v1/systemone` and `/v1/models` compatibility routes; playground-only probe routes are not ported. |
 | `kev/experiment.py`, `modal_app.py` | config-only trial runner, Modal H100 | Port if MPS becomes the bottleneck. |
 | `kev/composition.py`, `kev/study_v3.py`, `kev/contrastive.py` | synthetic compositional policy data, v3 study | Not needed until M4. |
-| `playground/` | Next.js UI with isolation/forgery probes and chess | Works against hev unchanged once M3 serve exists. |
-| `tests/` | unit, api, research, v3 tests | Read `test_unit.py` for what kev asserts; hev's tests are a superset for the mask. |
+| `playground/` | Next.js UI with isolation/forgery probes and chess | Works against Hev unchanged once M3 serve exists. |
+| `tests/` | unit, api, research, v3 tests | Read `test_unit.py` for what kev asserts; Hev's tests are a superset for the mask. |
 
 ## Baseline numbers (quote with these paths)
 
@@ -51,6 +51,6 @@ From `PLAN.md` and `train.py` defaults: Qwen3-0.6B-Base pinned to the suite revi
 - Eager attention on MPS, SDPA on CUDA; the float 4D mask is only known-good on eager for MPS.
 - Evaluate in fp32 with TF32 off on CUDA for exactness.
 
-## What kev deferred that hev picks up
+## What kev deferred that Hev picks up
 
-`PLAN.md` "Status and deferred work", last item: "Deferred: option-order architecture experiments. Do not infer Jev's architecture from zero argmax flips." That item is hev.
+`PLAN.md` "Status and deferred work", last item: "Deferred: option-order architecture experiments. Do not infer Jev's architecture from zero argmax flips." That item is Hev.

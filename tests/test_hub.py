@@ -32,7 +32,7 @@ def test_delimiters_exist_and_are_unforgeable(qwen_tok):
     ("transfer-v2", "development"),
 ])
 def test_every_m2_record_fits_kev_limits(qwen_tok, suite, split):
-    """hev packs the same tokens as kev with <decide> moved, so every admitted M2 record must encode strictly."""
+    """Hev packs the same tokens as kev with <decide> moved, so every admitted M2 record must encode strictly."""
     longest = 0
     for r in load_split(ROOT / "evals" / suite, split):
         enc = encode(qwen_tok, materialize(r), strict=True)

@@ -1,7 +1,7 @@
-"""hev decision model: causal LM backbone + option-isolating block mask + permutation-equivariant readout.
+"""Hev decision model: causal LM backbone + option-isolating block mask + permutation-equivariant readout.
 
 The design is described in docs/DESIGN.md. In one sentence: kev isolates *questions* from each other
-under a block-causal mask; hev additionally isolates every *option* from its sibling options, so the
+under a block-causal mask; Hev additionally isolates every *option* from its sibling options, so the
 hidden state of an option is, by construction, independent of where in the list that option appears.
 Order can then only enter through the readout head, and the heads here are permutation-equivariant.
 

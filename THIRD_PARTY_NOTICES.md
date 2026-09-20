@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-hev is original research code with clearly identified adaptations and external assets.
+Hev is original research code with clearly identified adaptations and external assets.
 
 ## kev
 
@@ -10,7 +10,7 @@ kev is licensed under Apache-2.0. Copyright 2026 Jared Palmer. Modified Hev file
 
 ## Jev And System One
 
-The project studies the public shape of TypeSafe's Jev and implements a compatible subset of the public System One API contract. No TypeSafe source code or private implementation is included. Jev, System One and TypeSafe names belong to their owner. hev is not affiliated with or endorsed by TypeSafe.
+The project studies the public shape of TypeSafe's Jev and implements a compatible subset of the public System One API contract. No TypeSafe source code or private implementation is included. Jev, System One and TypeSafe names belong to their owner. Hev is not affiliated with or endorsed by TypeSafe.
 
 The architectural starting point is Archer Hume's public article, [Jev's Architecture Unmasked](https://archerhume.com/posts/jevs-architecture-unmasked). The article is cited for ideas and observations; its text and figures are not redistributed here.
 

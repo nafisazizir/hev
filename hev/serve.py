@@ -20,7 +20,7 @@ from .model import encode
 
 INFER_MAX_STATE, INFER_MAX_BRANCH = 8192, 8192
 
-app = FastAPI(title="hev")
+app = FastAPI(title="Hev")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 STATE = {"run": None, "predictor": None, "temperature": None, "lock": threading.Lock()}
 
@@ -103,7 +103,7 @@ def load_run(run, device):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="serve one evaluated hev checkpoint")
+    parser = argparse.ArgumentParser(description="serve one evaluated Hev checkpoint")
     parser.add_argument("--run", default="runs/m2-pointer-s0",
                         help="local run directory or hf://OWNER/hev-0.6b@seed-0")
     parser.add_argument("--port", type=int, default=8008)

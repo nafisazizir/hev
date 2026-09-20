@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: If you use hev, cite this software and the upstream work acknowledged in the model card.
-title: "hev: an option-order-invariant decision model"
+message: If you use Hev, cite this software and the upstream work acknowledged in the model card.
+title: "Hev: an option-order-invariant decision model"
 type: software
 authors:
   - given-names: Nafis
@@ -12,7 +12,7 @@ version: 0.1.0
 license: Apache-2.0
 preferred-citation:
   type: software
-  title: "hev: an option-order-invariant decision model"
+  title: "Hev: an option-order-invariant decision model"
   authors:
     - given-names: Nafis
       family-names: Azizi Riza

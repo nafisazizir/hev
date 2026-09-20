@@ -1,7 +1,7 @@
 """TypeSafe-compatible request/response shapes for POST /v1/systemone.
 
 The contract is TypeSafe's System One API (https://docs.typesafe.ai/api), mirrored so the official
-`typesafe-sdk` and kev's playground work against hev with only a base_url change. The three question
+`typesafe-sdk` and kev's playground work against Hev with only a base_url change. The three question
 types are mapped onto one primitive, "score K options against a decision vector":
 
     noul   -> 2 options [no, yes];              answer = p(yes)
@@ -9,7 +9,7 @@ types are mapped onto one primitive, "score K options against a decision vector"
     score  -> options = ordered level texts;    answer = expected level, legend, probabilities by index
 
 Shapes follow kev/api.py (Apache-2.0, Jared Palmer) so that kev's frozen evaluation suites are
-byte-compatible with hev. See docs/KEV.md.
+byte-compatible with Hev. See docs/KEV.md.
 """
 from typing import Any, Literal, Union
 

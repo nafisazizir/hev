@@ -54,7 +54,7 @@ def augment(req, rng, p_none=0.1, p_none_distract=0.12, p_distract=0.15):
     """Choice only: permute option order (always); sometimes add a 'none of the above' option, either as the correct
     answer (true option removed) or as a wrong alternative (true option kept); sometimes add an irrelevant distractor.
 
-    Note for hev: permutation is kept even though the backbone is order-invariant by construction. It still matters
+    Note for Hev: permutation is kept even though the backbone is order-invariant by construction. It still matters
     for the `set` head and as a no-op sanity check for the `pointer` head."""
     if min(p_none, p_none_distract, p_distract) < 0 or p_none + p_none_distract + p_distract > 1:
         raise ValueError("augmentation probabilities must be nonnegative and sum to at most one")

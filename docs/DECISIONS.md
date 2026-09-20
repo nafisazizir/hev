@@ -6,7 +6,7 @@ Append-only log. Newest at the bottom. Each entry: what was decided, why, what w
 
 Own repo and own model code. Kev's eval suites and API contract are copied in from day one; other kev pieces are ported only when a milestone needs them.
 
-Why: the model, mask and readout are the whole point of hev, and writing them clean avoids fighting kev's assumptions when the packing differs. Copying suites and schema immediately means every hev number is comparable to kev and Jev from the first run.
+Why: the model, mask and readout are the whole point of Hev, and writing them clean avoids fighting kev's assumptions when the packing differs. Copying suites and schema immediately means every Hev number is comparable to kev and Jev from the first run.
 
 Rejected: forking kev and swapping model.py. Kev's train.py, evaluate.py and serve.py all call kev's `encode` and expect its checkpoint layout, so the swap would touch most files anyway.
 
@@ -18,7 +18,7 @@ Rejected for now: extract question type, dependent-question DAG, transfer-calibr
 
 ## D3. Same delimiters, limits, schema and augmentation as kev  (2026-09-19)
 
-Why: identical packed token counts mean kev's context-limit admission carries over, so every record in the frozen suites is admissible in hev without re-freezing. Identical augmentation means a difference in results is attributable to the architecture, not the data pipeline.
+Why: identical packed token counts mean kev's context-limit admission carries over, so every record in the frozen suites is admissible in Hev without re-freezing. Identical augmentation means a difference in results is attributable to the architecture, not the data pipeline.
 
 ## D4. Two readout heads, pointer first  (2026-09-19)
 
@@ -56,7 +56,7 @@ Recorded before any M2 training run. These rules are fixed; outcomes are appende
 
 **Headline metrics are clean-only.** `variant == "clean"` rows only enter headline accuracy/NLL/Brier/ECE; none_present, none_absent and permuted variants are diagnostic reports, never headline. Temperature is fit once on decision-v2 calibration (clean rows, unweighted macro-task NLL, 81-point log grid [0.25, 4.0]) and applied unchanged to decision development, transfer development, and the ablation; transfer never fits its own.
 
-**Uncertainty.** Deterministic percentile bootstrap: 10,000 draws, fixed seed 20260919, clustered on `(source, group_id)`, stratified by source (resample each source's clusters with replacement, keep every row in a sampled cluster). Intervals cover hev estimates and paired `set - pointer` deltas only. Kev seed-0/seed-1 results (`runs/ablation-v2/06-trial-6/result.json` and `07-trial-7/result.json`, hash-verified) are point baselines only — kev v2 artifacts have no per-example rows, so no paired hev-vs-kev CI is claimed.
+**Uncertainty.** Deterministic percentile bootstrap: 10,000 draws, fixed seed 20260919, clustered on `(source, group_id)`, stratified by source (resample each source's clusters with replacement, keep every row in a sampled cluster). Intervals cover Hev estimates and paired `set - pointer` deltas only. Kev seed-0/seed-1 results (`runs/ablation-v2/06-trial-6/result.json` and `07-trial-7/result.json`, hash-verified) are point baselines only — kev v2 artifacts have no per-example rows, so no paired Hev-vs-kev CI is claimed.
 
 **H1: option isolation removes order sensitivity at acceptable accuracy cost.** Supported only if, for PointerHead on both decision-v2 and transfer-v2 development: (1) Choice K>=3 argmax flip rate is exactly 0 across six deterministic orders; (2) p90 correct-option probability spread <= 1e-4; (3) packed-vs-separate max absolute probability difference <= 1e-4 where applicable; (4) clean micro accuracy >= 0.765833 on decision-v2 and >= 0.569643 on transfer-v2 (no more than 5 points below kev seed 0). The kev threshold is a fixed sourced point, not an interval.
 
@@ -66,7 +66,7 @@ Recorded before any M2 training run. These rules are fixed; outcomes are appende
 
 **Score level-embedding ablation.** The embedding is used if the maximum Score probability change under zeroing exceeds 1e-4; useful if learned-level Score NLL is lower and the paired grouped 95% CI for `(learned - zeroed)` NLL has upper bound < 0; otherwise learned-but-not-proven-useful or inconclusive, with no reinterpretation after results.
 
-**D6 trigger.** Recommend pursuing D6 only if both hev heads score below 0.7125 clean accuracy on banking77 (matched kev seed-0 0.7625 minus 5 points). M2 records the trigger outcome; it does not implement the fallback.
+**D6 trigger.** Recommend pursuing D6 only if both Hev heads score below 0.7125 clean accuracy on banking77 (matched kev seed-0 0.7625 minus 5 points). M2 records the trigger outcome; it does not implement the fallback.
 
 ## D10. M2 selects PointerHead as the default  (2026-09-20)
 

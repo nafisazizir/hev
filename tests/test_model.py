@@ -71,7 +71,7 @@ def test_mask_rule():
     assert not allowed[3, 4]                                      # instruction never sees its options (future)
     assert allowed[5, 0] and allowed[5, 2] and allowed[5, 4]      # option 1 sees state, instruction, itself
     assert allowed[7, 0] and allowed[7, 3] and allowed[7, 6]      # option 2 likewise
-    assert not allowed[7, 4] and not allowed[7, 5]                # option 2 never sees option 1  <- hev's claim
+    assert not allowed[7, 4] and not allowed[7, 5]                # option 2 never sees option 1  <- Hev's claim
     assert not allowed[5, 6] and not allowed[5, 7]                # option 1 never sees option 2 (causal)
     assert allowed[9, 0] and not allowed[9, 2] and not allowed[9, 4]  # question 2 never sees question 1 (kev's claim)
     assert allowed[11, 8] and not allowed[11, 5] and not allowed[11, 7]
@@ -106,7 +106,7 @@ def _perm_probs(model, tok, options, qtype="choice", trials=6, seed=0):
 @pytest.mark.parametrize("head", ["pointer", "set"])
 def test_option_order_invariance(models, tok, head):
     """Reorder the options: the returned distribution must be the same distribution, permuted. This is the
-    property kev measures (7% argmax flips) and hev enforces by construction."""
+    property kev measures (7% argmax flips) and Hev enforces by construction."""
     options = ["returns: exchanges and refunds", "shipping: delays", "billing: charges", "other", "weather"]
     base, perms = _perm_probs(models[head], tok, options)
     for p_choice, p_noul in perms:
@@ -134,7 +134,7 @@ def test_sibling_question_invariance(models, tok):
 
 
 def test_score_levels_break_invariance(models, tok):
-    """For Score questions order is meaning, so hev must NOT be invariant there once the level embedding is non-zero."""
+    """For Score questions order is meaning, so Hev must NOT be invariant there once the level embedding is non-zero."""
     m = models["pointer"]
     with torch.no_grad():
         m.level.weight.normal_(0, 1.0)

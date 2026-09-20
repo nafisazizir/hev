@@ -1,6 +1,6 @@
 # Contributing
 
-hev is a research repository. Keep changes small, auditable and reproducible.
+Hev is a research repository. Keep changes small, auditable and reproducible.
 
 ## Development
 

@@ -104,7 +104,7 @@ def build_bundle(run, repo, revision, card=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="publish one evaluated hev run to the Hugging Face Hub")
+    parser = argparse.ArgumentParser(description="publish one evaluated Hev run to the Hugging Face Hub")
     parser.add_argument("--run", required=True, help="local run directory")
     parser.add_argument("--repo", required=True, help="Hub repo id, e.g. OWNER/hev-0.6b")
     parser.add_argument("--revision", required=True, help="branch to upload to, e.g. seed-0")

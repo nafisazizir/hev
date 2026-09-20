@@ -1,4 +1,4 @@
-# hev
+# Hev
 
 Small, option-order-invariant decision model. Typed questions in, calibrated probabilities out, one prefill, no decoding.
 
@@ -8,11 +8,11 @@ Small, option-order-invariant decision model. Typed questions in, calibrated pro
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-0a0a0a.svg?style=for-the-badge&labelColor=000000" height="28"></a>
 </p>
 
-hev is a LoRA adapter and PointerHead on `Qwen/Qwen3-0.6B-Base`. It reads one state, answers many typed questions in parallel and returns probability distributions without generating text.
+Hev is a LoRA adapter and PointerHead on `Qwen/Qwen3-0.6B-Base`. It reads one state, answers many typed questions in parallel and returns probability distributions without generating text.
 
-Its experiment is narrow: kev isolates questions; hev also isolates every option from its sibling options. Every option receives the same positions and can attend only to the state, its question and itself. Reordering Choice options therefore cannot change their backbone representations. The readout is permutation-equivariant, so semantic answers are invariant by construction.
+Its experiment is narrow: kev isolates questions; Hev also isolates every option from its sibling options. Every option receives the same positions and can attend only to the state, its question and itself. Reordering Choice options therefore cannot change their backbone representations. The readout is permutation-equivariant, so semantic answers are invariant by construction.
 
-hev is an independent research project. It is not Jev, is not affiliated with TypeSafe and does not claim to reproduce Jev's private implementation.
+Hev is an independent research project. It is not Jev, is not affiliated with TypeSafe and does not claim to reproduce Jev's private implementation.
 
 ## Highlights
 
@@ -125,22 +125,22 @@ All numbers are on frozen **development** splits. The locked test split has not 
 
 | Model | Decision accuracy | Transfer accuracy | Decision calibrated ECE |
 |---|---:|---:|---:|
-| **hev PointerHead** | **80.00%** (79.33–80.67) | **60.71%** (60.36–61.07) | **0.020** |
+| **Hev PointerHead** | **80.00%** (79.33–80.67) | **60.71%** (60.36–61.07) | **0.020** |
 | kev Qwen3-0.6B | 80.46% (79.33–81.58) | 62.05% (61.96–62.14) | 0.030 |
 | Jev `1.13.0` | 83.50% | 85.36% | 0.103 |
 
-hev and kev are two-seed means with ranges. Jev is one hosted snapshot, not a seed average. This is the same evaluation, not a controlled training comparison: systems differ in architecture, training, compute and availability.
+Hev and kev are two-seed means with ranges. Jev is one hosted snapshot, not a seed average. This is the same evaluation, not a controlled training comparison: systems differ in architecture, training, compute and availability.
 
 ### Option order
 
 | Model | Protocol | Decision flips | Transfer flips | Probability movement |
 |---|---|---:|---:|---:|
-| **hev Pointer seed 0** | six orders, all eligible Choice | **0 / 696** | **0 / 348** | p90 correct-probability spread `1.25e-6` / `2.74e-6` |
-| **hev Pointer seed 1** | six orders, all eligible Choice | **0 / 696** | **0 / 348** | p90 spread `1.45e-6` / `2.86e-6` |
+| **Hev Pointer seed 0** | six orders, all eligible Choice | **0 / 696** | **0 / 348** | p90 correct-probability spread `1.25e-6` / `2.74e-6` |
+| **Hev Pointer seed 1** | six orders, all eligible Choice | **0 / 696** | **0 / 348** | p90 spread `1.45e-6` / `2.86e-6` |
 | kev seed 0 / 1 | clean plus one fixed permutation | 5.56% / 4.17% of 72 | 8.33% / 8.33% of 36 | mean max change `0.047` / `0.026`; transfer `0.090` / `0.083` |
 | Jev `1.13.0` | clean plus one fixed permutation | 1.39% of 72 | 0% of 36 | maximum change `0.456` / `0.200` |
 
-The protocols differ: hev receives the stronger exhaustive study; kev and Jev use one frozen permutation. The result supports exact Hev invariance. It does not show that invariance improves accuracy, and zero observed Jev transfer flips do not establish Jev's architecture.
+The protocols differ: Hev receives the stronger exhaustive study; kev and Jev use one frozen permutation. The result supports exact Hev invariance. It does not show that invariance improves accuracy, and zero observed Jev transfer flips do not establish Jev's architecture.
 
 Full metrics, uncertainty, calibration caveats and task breakdowns are in [RESULTS](docs/RESULTS.md). The authoritative aggregate is [`runs/m3-three-way-v2-r1/result.json`](runs/m3-three-way-v2-r1/result.json).
 
@@ -227,7 +227,7 @@ See [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) and the append-only
 
 Created by [Nafis Azizi Riza](https://github.com/nafisazizir). Built with [Devin](https://devin.ai) by Cognition.
 
-hev exists because of work by:
+Hev exists because of work by:
 
 - [TypeSafe](https://typesafe.ai) for Jev and the public System One API contract.
 - [Archer Hume](https://archerhume.com/posts/jevs-architecture-unmasked) for the public architectural reconstruction.

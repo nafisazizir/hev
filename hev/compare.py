@@ -214,9 +214,9 @@ def validate_compatibility(pointer, set_run, kev):
     if any(left[field] != right[field] for field in fields):
         raise ValueError("pointer and set run provenance differs")
     if left["training_suite_sha256"] != kev["decision_suite_sha256"]:
-        raise ValueError("hev and kev decision suite hashes differ")
+        raise ValueError("Hev and kev decision suite hashes differ")
     if left["transfer_suite_sha256"] != kev["transfer_suite_sha256"]:
-        raise ValueError("hev and kev transfer suite hashes differ")
+        raise ValueError("Hev and kev transfer suite hashes differ")
 
 
 def compare(pointer_path, set_path, kev_seed0_path, kev_seed1_path, samples=10000, seed=20260919):

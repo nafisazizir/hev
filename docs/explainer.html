@@ -1,4 +1,4 @@
-<title>How hev Works</title>
+<title>How Hev Works</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   :root {
@@ -98,19 +98,19 @@
 </style>
 
 <div class="wrap">
-  <div class="eyebrow">hev · architecture explainer · 2026-09-19</div>
-  <h1>How hev works, and what it changes from kev</h1>
+  <div class="eyebrow">Hev · architecture explainer · 2026-09-19</div>
+  <h1>How Hev works, and what it changes from kev</h1>
   <p class="lede">A walk from "what goes in" to "what comes out", drawn at the level of individual tokens. No prior machine learning knowledge assumed. Every figure shows a mechanism, and the two attention grids are computed on this page from the same rule the code uses.</p>
   <ul class="path">
     <li><a href="#job">1 The job</a></li><li><a href="#pipeline">2 The whole pipeline</a></li><li><a href="#tokens">3 Tokens and vectors</a></li><li><a href="#attention">4 Attention and masks</a></li>
-    <li><a href="#packing">5 Packing</a></li><li><a href="#mask">6 The mask, kev vs hev</a></li><li><a href="#depends">7 Where order sensitivity comes from</a></li>
+    <li><a href="#packing">5 Packing</a></li><li><a href="#mask">6 The mask, kev vs Hev</a></li><li><a href="#depends">7 Where order sensitivity comes from</a></li>
     <li><a href="#positions">8 Positions</a></li><li><a href="#readout">9 Readout heads</a></li><li><a href="#score">10 Ordered levels</a></li>
     <li><a href="#training">11 Training</a></li><li><a href="#experiment">12 The experiment</a></li><li><a href="#glossary">Glossary</a></li>
   </ul>
 
   <!-- ============================================================ 1 -->
   <h2 id="job">1. The job: typed questions in, probabilities out</h2>
-  <p>A normal language model writes text one word at a time. Kev, hev and Jev do not write anything. They read a piece of text (the <strong>state</strong>) and a set of typed <strong>questions</strong> about it, and return a probability for every allowed answer. Software can use those numbers directly: route a ticket, gate a workflow, rank candidates.</p>
+  <p>A normal language model writes text one word at a time. Kev, Hev and Jev do not write anything. They read a piece of text (the <strong>state</strong>) and a set of typed <strong>questions</strong> about it, and return a probability for every allowed answer. Software can use those numbers directly: route a ticket, gate a workflow, rank candidates.</p>
   <p>Three question types exist, and all three are the same operation underneath: score a list of options and turn the scores into probabilities.</p>
 
   <figure>
@@ -163,7 +163,7 @@
 
   <!-- ============================================================ pipeline -->
   <h2 id="pipeline">2. The whole pipeline in one picture</h2>
-  <p>Before the details, here is the map. A request travels down the left column. The backbone is one stage in the middle of it, not the start: packing and the mask come <em>before</em> the backbone because they decide what the backbone is allowed to read. The right side zooms into one of the 28 layers to show where the mask, the position ids and the LoRA adapters plug in. Stages with a teal bar are the ones where hev differs from kev; every other stage is identical.</p>
+  <p>Before the details, here is the map. A request travels down the left column. The backbone is one stage in the middle of it, not the start: packing and the mask come <em>before</em> the backbone because they decide what the backbone is allowed to read. The right side zooms into one of the 28 layers to show where the mask, the position ids and the LoRA adapters plug in. Stages with a teal bar are the ones where Hev differs from kev; every other stage is identical.</p>
 
   <figure>
     <div class="scroll">
@@ -340,7 +340,7 @@
       </g>
     </svg>
     </div>
-    <figcaption><strong>The map.</strong> Stages 1 to 3 and 6 to 8, 11 and 12 are identical to kev. Stage 4 differs by where the decide token goes and by the extra <span class="mono">sub</span> tag and shared option positions. Stage 5 is the mask rule. Stage 9 exists only in hev. Stage 10 is where the optional set head lives. Inside a layer, position ids enter at RoPE and the mask enters at the attention scores, which is why those two stages must come before the backbone. The backbone itself is unchanged Qwen3 with LoRA on the same seven projections kev adapts.</figcaption>
+    <figcaption><strong>The map.</strong> Stages 1 to 3 and 6 to 8, 11 and 12 are identical to kev. Stage 4 differs by where the decide token goes and by the extra <span class="mono">sub</span> tag and shared option positions. Stage 5 is the mask rule. Stage 9 exists only in Hev. Stage 10 is where the optional set head lives. Inside a layer, position ids enter at RoPE and the mask enters at the attention scores, which is why those two stages must come before the backbone. The backbone itself is unchanged Qwen3 with LoRA on the same seven projections kev adapts.</figcaption>
   </figure>
 
   <p>So your guess of "backbone, pack, mask, readout" has the right parts. The actual order is pack, mask, backbone, readout, because the mask is an <em>input</em> to every attention step inside the backbone rather than something applied afterwards.</p>
@@ -348,7 +348,7 @@
   <!-- ============================================================ 2 -->
   <h2 id="tokens">3. Tokens and vectors</h2>
   <p>A model cannot read letters. Text is first cut into <span class="term" title="A token is a chunk of text, usually a word or part of a word, that the model treats as one unit.">tokens</span>, small chunks of a few characters each, and each token is looked up in a table to get a list of numbers called a <span class="term" title="A vector is just a list of numbers. Here every token becomes a list of 1,024 numbers.">vector</span>. For Qwen3-0.6B that list has 1,024 numbers. Everything that follows is arithmetic on those lists.</p>
-  <p>A <span class="term" title="Transformer: a stack of identical layers, each of which lets tokens exchange information via attention, then transforms each token's vector with a small neural network.">transformer</span> is a stack of layers, 28 in this model. Each layer updates every token's vector by letting it read from other tokens' vectors. After the last layer, each token's vector is a summary of that token <em>in context</em>. Which context it got to read is decided by the attention mask, which is the whole story of hev.</p>
+  <p>A <span class="term" title="Transformer: a stack of identical layers, each of which lets tokens exchange information via attention, then transforms each token's vector with a small neural network.">transformer</span> is a stack of layers, 28 in this model. Each layer updates every token's vector by letting it read from other tokens' vectors. After the last layer, each token's vector is a summary of that token <em>in context</em>. Which context it got to read is decided by the attention mask, which is the whole story of Hev.</p>
 
   <figure>
     <div class="scroll">
@@ -398,7 +398,7 @@
           <text x="0" y="0" font-size="12">Row 4 is token 4 reading.</text>
           <text x="0" y="20" font-size="12">It may read tokens 1, 2, 3 and itself.</text>
           <text x="0" y="40" font-size="12">It may not read 5 or 6: they are in the future.</text>
-          <text x="0" y="72" font-size="12" fill="var(--muted)">Both kev and hev keep this triangle and</text>
+          <text x="0" y="72" font-size="12" fill="var(--muted)">Both kev and Hev keep this triangle and</text>
           <text x="0" y="90" font-size="12" fill="var(--muted)">remove cells from it. Neither ever adds a cell,</text>
           <text x="0" y="108" font-size="12" fill="var(--muted)">so the base model's pretrained habits still apply.</text>
         </g>
@@ -411,21 +411,21 @@
   <!-- ============================================================ 4 -->
   <h2 id="packing">5. Packing: one sequence for the state and every question</h2>
   <p>Both models put the state and all the questions into <strong>one</strong> sequence, so the state is processed once no matter how many questions there are. Five rarely used special tokens act as delimiters. They cannot be produced from user text, so a hostile ticket cannot forge an option boundary.</p>
-  <p>Here is a state and one question with three options, packed the kev way and the hev way. The tokens are identical. The only difference is where the <span class="mono">decide</span> token sits.</p>
+  <p>Here is a state and one question with three options, packed the kev way and the Hev way. The tokens are identical. The only difference is where the <span class="mono">decide</span> token sits.</p>
 
   <figure>
     <div class="rowlabel k">kev packing</div>
     <div class="tokens" id="pack-kev"></div>
-    <div class="rowlabel h">hev packing</div>
+    <div class="rowlabel h">Hev packing</div>
     <div class="tokens" id="pack-hev"></div>
     <div class="legend"><span class="s">state</span><span class="i">instruction</span><span class="o">option</span><span class="d">decide token</span></div>
-    <figcaption><strong>Same tokens, one moved.</strong> In kev the <span class="mono">decide</span> token comes last, after it has read all the options in order. In hev it comes right after the instruction, before any option, so it is a question about the state, not a summary of the list. A second question would follow the same pattern after this one.</figcaption>
+    <figcaption><strong>Same tokens, one moved.</strong> In kev the <span class="mono">decide</span> token comes last, after it has read all the options in order. In Hev it comes right after the instruction, before any option, so it is a question about the state, not a summary of the list. A second question would follow the same pattern after this one.</figcaption>
   </figure>
 
   <!-- ============================================================ 5 -->
-  <h2 id="mask">6. The mask, kev versus hev</h2>
+  <h2 id="mask">6. The mask, kev versus Hev</h2>
   <p>Now the central figure. Both grids start from the causal triangle and remove cells. Kev's rule: a token may read the state, or anything earlier in its <em>own question</em>. Hev's rule adds one more clause: an option may read its own question's instruction and itself, but <strong>never a sibling option</strong>.</p>
-  <p>Look at the rows for option 2 and option 3. In kev they reach back into option 1's columns. In hev those cells are gone. That handful of cells is the entire architectural difference.</p>
+  <p>Look at the rows for option 2 and option 3. In kev they reach back into option 1's columns. In Hev those cells are gone. That handful of cells is the entire architectural difference.</p>
 
   <figure>
     <div class="grids">
@@ -434,17 +434,17 @@
         <div class="scroll"><svg id="grid-kev" role="img" aria-label="kev's attention mask: option tokens may read earlier options in the same question."></svg></div>
       </div>
       <div>
-        <h4 class="h">hev: block-causal by question and by option</h4>
-        <div class="scroll"><svg id="grid-hev" role="img" aria-label="hev's attention mask: option tokens may read only the state, the instruction, and themselves."></svg></div>
+        <h4 class="h">Hev: block-causal by question and by option</h4>
+        <div class="scroll"><svg id="grid-hev" role="img" aria-label="Hev's attention mask: option tokens may read only the state, the instruction, and themselves."></svg></div>
       </div>
     </div>
     <div class="legend"><span class="on">allowed</span><span class="off">forbidden</span><span class="s">state</span><span class="i">instruction and decide</span><span class="o">options</span></div>
-    <figcaption><strong>Computed, not drawn.</strong> These two grids are generated by a few lines of script on this page that implement the two rules literally. The cells marked with a small orange dot are allowed in kev and forbidden in hev: the option-to-sibling reads. Everything else agrees.</figcaption>
+    <figcaption><strong>Computed, not drawn.</strong> These two grids are generated by a few lines of script on this page that implement the two rules literally. The cells marked with a small orange dot are allowed in kev and forbidden in Hev: the option-to-sibling reads. Everything else agrees.</figcaption>
   </figure>
 
   <pre><code>kev:  allow(i, j) = j ≤ i and ( seg[j] == state  or  seg[j] == seg[i] )
 
-hev:  allow(i, j) = j ≤ i and ( seg[j] == state
+Hev:  allow(i, j) = j ≤ i and ( seg[j] == state
                              or (seg[j] == seg[i] and sub[j] == instruction)
                              or (seg[j] == seg[i] and sub[j] == sub[i]) )
 
@@ -452,12 +452,12 @@ seg = which question a token belongs to (0 for the state)
 sub = which option within that question (0 for the instruction)</code></pre>
 
   <!-- ============================================================ 6 -->
-  <h2 id="depends">7. Where order sensitivity comes from, and why hev cannot have it</h2>
+  <h2 id="depends">7. Where order sensitivity comes from, and why Hev cannot have it</h2>
   <p>Ask a simple question: at the end of the network, what does option 3's vector depend on? Trace the allowed reads through all 28 layers.</p>
 
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 880 300" role="img" aria-label="In kev, option 3's final vector depends on the state, the instruction, options 1 and 2, and its list position. In hev it depends only on the state, the instruction, and its own text.">
+    <svg viewBox="0 0 880 300" role="img" aria-label="In kev, option 3's final vector depends on the state, the instruction, options 1 and 2, and its list position. In Hev it depends only on the state, the instruction, and its own text.">
       <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="12">
         <!-- kev side -->
         <text x="10" y="24" font-family="Sora, sans-serif" font-weight="600" font-size="14" fill="var(--kev)">kev</text>
@@ -483,7 +483,7 @@ sub = which option within that question (0 for the instruction)</code></pre>
         <text x="10" y="280" font-size="12" fill="var(--muted)">so the vector changes, so the probability can change.</text>
 
         <!-- hev side -->
-        <text x="470" y="24" font-family="Sora, sans-serif" font-weight="600" font-size="14" fill="var(--hev)">hev</text>
+        <text x="470" y="24" font-family="Sora, sans-serif" font-weight="600" font-size="14" fill="var(--hev)">Hev</text>
         <g transform="translate(470 40)">
           <rect x="0" y="0" width="120" height="26" rx="4" fill="var(--state-soft)" stroke="var(--state)"/><text x="60" y="18" text-anchor="middle">state</text>
           <rect x="0" y="36" width="120" height="26" rx="4" fill="var(--instr-soft)" stroke="var(--instr)"/><text x="60" y="54" text-anchor="middle">instruction</text>
@@ -504,7 +504,7 @@ sub = which option within that question (0 for the instruction)</code></pre>
       </g>
     </svg>
     </div>
-    <figcaption><strong>The dependency graph is the proof.</strong> Kev fights order sensitivity with training tricks (shuffling options during training, a consistency penalty) and still ends at 7% of answers flipping under reorder. In hev the offending inputs are not connected, so the flip rate is zero before any training happens. The unit tests check this numerically on a random network.</figcaption>
+    <figcaption><strong>The dependency graph is the proof.</strong> Kev fights order sensitivity with training tricks (shuffling options during training, a consistency penalty) and still ends at 7% of answers flipping under reorder. In Hev the offending inputs are not connected, so the flip rate is zero before any training happens. The unit tests check this numerically on a random network.</figcaption>
   </figure>
 
   <div class="callout">
@@ -513,15 +513,15 @@ sub = which option within that question (0 for the instruction)</code></pre>
 
   <!-- ============================================================ 7 -->
   <h2 id="positions">8. Positions: every option starts at the same place</h2>
-  <p>Attention has no built-in sense of order, so transformers stamp each token with a <span class="term" title="Position encoding (RoPE in Qwen): a rotation applied to each token's vector that depends on its index in the sequence, so the model can tell first from fifth.">position number</span>. If options 1, 2 and 3 sat at positions 10, 13 and 16, their vectors would differ by position alone, even with the mask fixed. So hev restarts the position counter for every option at the same value: the position right after the instruction.</p>
+  <p>Attention has no built-in sense of order, so transformers stamp each token with a <span class="term" title="Position encoding (RoPE in Qwen): a rotation applied to each token's vector that depends on its index in the sequence, so the model can tell first from fifth.">position number</span>. If options 1, 2 and 3 sat at positions 10, 13 and 16, their vectors would differ by position alone, even with the mask fixed. So Hev restarts the position counter for every option at the same value: the position right after the instruction.</p>
 
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 1160 170" style="min-width: 900px" role="img" aria-label="kev numbers positions continuously through the options; hev gives every option the same starting position.">
+    <svg viewBox="0 0 1160 170" style="min-width: 900px" role="img" aria-label="kev numbers positions continuously through the options; Hev gives every option the same starting position.">
       <g fill="currentColor" font-family="IBM Plex Mono, monospace" font-size="11">
         <text x="10" y="22" font-family="Sora, sans-serif" font-weight="600" font-size="13" fill="var(--kev)">kev positions</text>
         <g transform="translate(10 32)" id="pos-kev"></g>
-        <text x="10" y="102" font-family="Sora, sans-serif" font-weight="600" font-size="13" fill="var(--hev)">hev positions</text>
+        <text x="10" y="102" font-family="Sora, sans-serif" font-weight="600" font-size="13" fill="var(--hev)">Hev positions</text>
         <g transform="translate(10 112)" id="pos-hev"></g>
       </g>
     </svg>
@@ -587,7 +587,7 @@ sub = which option within that question (0 for the instruction)</code></pre>
 
   <!-- ============================================================ 9 -->
   <h2 id="score">10. Ordered levels: where order is meaning, not noise</h2>
-  <p>For a <span class="mono">score</span> question the levels are ordered on purpose: calm, frustrated, very angry. If hev were perfectly order-blind there, it could not know that "frustrated" sits between the other two. So for score questions only, a learned <strong>level embedding</strong> (one vector per position index) is added to each option vector at the readout. It starts at all zeros, so a fresh model is blind everywhere and learns to use order only where the labels reward it. The backbone stays untouched.</p>
+  <p>For a <span class="mono">score</span> question the levels are ordered on purpose: calm, frustrated, very angry. If Hev were perfectly order-blind there, it could not know that "frustrated" sits between the other two. So for score questions only, a learned <strong>level embedding</strong> (one vector per position index) is added to each option vector at the readout. It starts at all zeros, so a fresh model is blind everywhere and learns to use order only where the labels reward it. The backbone stays untouched.</p>
 
   <figure>
     <div class="scroll">
@@ -653,16 +653,16 @@ sub = which option within that question (0 for the instruction)</code></pre>
   <table>
     <thead><tr><th>Run</th><th>Question it answers</th><th>If it matches kev</th><th>If it falls short</th></tr></thead>
     <tbody>
-      <tr><td><span class="hv">hev-pointer</span></td><td>Was order sensitivity free to remove?</td><td>Yes. Zero flips at no accuracy cost. Strongest possible result.</td><td>Options need to compare with each other somewhere. Look at which sources dropped: high-K ones like 77-way banking intents would confirm it.</td></tr>
-      <tr><td><span class="hv">hev-set</span></td><td>Is interaction enough, without order?</td><td>Options must interact but do not need order. Clean story.</td><td>Deep in-backbone comparison matters. Fallback: encode independently, shortlist the top few, re-score those with a set layer.</td></tr>
+      <tr><td><span class="hv">Hev Pointer</span></td><td>Was order sensitivity free to remove?</td><td>Yes. Zero flips at no accuracy cost. Strongest possible result.</td><td>Options need to compare with each other somewhere. Look at which sources dropped: high-K ones like 77-way banking intents would confirm it.</td></tr>
+      <tr><td><span class="hv">Hev Set</span></td><td>Is interaction enough, without order?</td><td>Options must interact but do not need order. Clean story.</td><td>Deep in-backbone comparison matters. Fallback: encode independently, shortlist the top few, re-score those with a set layer.</td></tr>
       <tr><td>calibration</td><td>Are the probabilities still honest?</td><td>Expected, since the loss is unchanged.</td><td>Interesting on its own: the mask changed what the model can be uncertain about.</td></tr>
       <tr><td>ablation</td><td>Does the level embedding earn its place?</td><td colspan="2">Zero it out and re-evaluate the score questions. If nothing changes, it can go.</td></tr>
     </tbody>
   </table>
-  <p>Every run also reports the flip rate under reordering. For hev it must be exactly zero, and reporting it is the check that the code matches the drawing above.</p>
+  <p>Every run also reports the flip rate under reordering. For Hev it must be exactly zero, and reporting it is the check that the code matches the drawing above.</p>
 
   <div class="callout">
-    <strong>After that, hev stops being an ablation and becomes its own model.</strong> The isolation design makes each option a self-contained branch, which is what the next ideas need: an <em>extract</em> question type where the options are spans of the state itself, and <em>dependent questions</em> where one question's decide vector may be read by another, giving if-then logic in a single pass.
+    <strong>After that, Hev stops being an ablation and becomes its own model.</strong> The isolation design makes each option a self-contained branch, which is what the next ideas need: an <em>extract</em> question type where the options are spans of the state itself, and <em>dependent questions</em> where one question's decide vector may be read by another, giving if-then logic in a single pass.
   </div>
 
   <!-- ============================================================ glossary -->

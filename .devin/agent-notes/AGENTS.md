@@ -4,7 +4,7 @@ Orientation for any agent or contributor starting a fresh session on this repo. 
 
 ## What this is
 
-hev is Nafis's research project: a Jev-style decision model (typed questions, probabilities out, single prefill, no decoding) whose one deliberate departure from kev is **option-level isolation** in the attention mask plus a permutation-equivariant readout. README.md has the pitch, docs/DESIGN.md has the mechanism, docs/DECISIONS.md has the why.
+Hev is Nafis's research project: a Jev-style decision model (typed questions, probabilities out, single prefill, no decoding) whose one deliberate departure from kev is **option-level isolation** in the attention mask plus a permutation-equivariant readout. README.md has the pitch, docs/DESIGN.md has the mechanism, docs/DECISIONS.md has the why.
 
 The sibling repo `/Users/nafis/Documents/personal/kev` is Jared Palmer's kev (clone at commit cc954f2). It is the reference implementation and the source of the eval suites. docs/KEV.md maps its files and says what to port and what not to.
 

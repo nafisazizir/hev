@@ -78,8 +78,8 @@ Accuracy intervals are 95% source-stratified, `(source, group_id)`-clustered boo
 
 | Model | Decision accuracy (95% CI) | Transfer accuracy (95% CI) | Decision calibrated ECE | Decision calibrated Brier | Evidence |
 |---|---:|---:|---:|---:|---|
-| hev PointerHead, seed 0 | 80.67% (78.33–82.92) | 61.07% (57.50–64.64) | 0.0148 | 0.2636 | [artifact](../runs/m2-comparison-s0/result.json) |
-| hev SetHead, seed 0 | 80.92% (78.58–83.25) | 60.71% (57.14–64.29) | 0.0223 | 0.2603 | [artifact](../runs/m2-comparison-s0/result.json) |
+| Hev PointerHead, seed 0 | 80.67% (78.33–82.92) | 61.07% (57.50–64.64) | 0.0148 | 0.2636 | [artifact](../runs/m2-comparison-s0/result.json) |
+| Hev SetHead, seed 0 | 80.92% (78.58–83.25) | 60.71% (57.14–64.29) | 0.0223 | 0.2603 | [artifact](../runs/m2-comparison-s0/result.json) |
 | kev seed 0 | 81.58% | 61.96% | 0.0264 | 0.2595 | [hash-verified source in artifact](../runs/m2-comparison-s0/result.json) |
 | kev seed 1 | 79.33% | 62.14% | 0.0339 | 0.2846 | [hash-verified source in artifact](../runs/m2-comparison-s0/result.json) |
 

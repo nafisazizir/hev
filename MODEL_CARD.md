@@ -239,7 +239,7 @@ Each local training run took 19–22 minutes on one Apple M4 Max. Energy consump
 
 ```bibtex
 @software{hev2026,
-  title  = {hev: an option-order-invariant decision model},
+  title  = {Hev: an option-order-invariant decision model},
   author = {Azizi Riza, Nafis},
   year   = {2026},
   url    = {https://github.com/nafisazizir/hev}
