@@ -225,7 +225,7 @@ See [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md) and the append-only
 
 ## Authors And Acknowledgements
 
-Created by [Nafis Azizi Riza](https://github.com/nafisazizir). Built with [Devin](https://devin.ai) by Cognition.
+Created by [Nafis Riza](https://github.com/nafisazizir). Built with [Devin](https://devin.ai) by Cognition.
 
 Hev exists because of work by:
 

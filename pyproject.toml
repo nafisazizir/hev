@@ -5,7 +5,7 @@ description = "Small option-order-invariant decision model with calibrated proba
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{ name = "Nafis Azizi Riza" }]
+authors = [{ name = "Nafis Riza" }]
 keywords = ["decision-model", "calibration", "lora", "order-invariance", "transformers"]
 classifiers = [
     "Development Status :: 3 - Alpha",

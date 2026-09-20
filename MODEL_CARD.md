@@ -59,7 +59,7 @@ This is a **development-only research prototype**. It is not a production decisi
 
 | | |
 |---|---|
-| Developed by | Nafis Azizi Riza, with Devin (Cognition) |
+| Developed by | Nafis Riza, with Devin (Cognition) |
 | Model type | Causal transformer, prefill-only, option-isolating mask, pointer readout |
 | Base model | `Qwen/Qwen3-0.6B-Base` |
 | Base revision | `da87bfb608c14b7cf20ba1ce41287e8de496c0cd` |
@@ -240,7 +240,7 @@ Each local training run took 19–22 minutes on one Apple M4 Max. Energy consump
 ```bibtex
 @software{hev2026,
   title  = {Hev: an option-order-invariant decision model},
-  author = {Azizi Riza, Nafis},
+  author = {Riza, Nafis},
   year   = {2026},
   url    = {https://github.com/nafisazizir/hev}
 }
@@ -262,7 +262,7 @@ Each local training run took 19–22 minutes on one Apple M4 Max. Energy consump
 
 ## Acknowledgements
 
-Created by Nafis Azizi Riza with engineering and research assistance from Devin by Cognition.
+Created by Nafis Riza with engineering and research assistance from Devin by Cognition.
 
 The work builds on TypeSafe's public description of Jev and System One, Archer Hume's architectural reconstruction, Jared Palmer's kev implementation and evaluation suites, the Qwen3 base model, and the public datasets listed above. Their inclusion does not imply endorsement or affiliation.
 

@@ -4,7 +4,7 @@ title: "Hev: an option-order-invariant decision model"
 type: software
 authors:
   - given-names: Nafis
-    family-names: Azizi Riza
+    family-names: Riza
     affiliation: Independent researcher
 repository-code: https://github.com/nafisazizir/hev
 url: https://github.com/nafisazizir/hev
@@ -15,6 +15,6 @@ preferred-citation:
   title: "Hev: an option-order-invariant decision model"
   authors:
     - given-names: Nafis
-      family-names: Azizi Riza
+      family-names: Riza
   year: 2026
   repository-code: https://github.com/nafisazizir/hev
