@@ -98,7 +98,7 @@
 </style>
 
 <div class="wrap">
-  <div class="eyebrow">Hev · architecture explainer · 2026-09-19</div>
+  <div class="eyebrow">Hev · architecture explainer · 2026-09-19, results updated 2026-09-21</div>
   <h1>How Hev works, and what it changes from kev</h1>
   <p class="lede">A walk from "what goes in" to "what comes out", drawn at the level of individual tokens. No prior machine learning knowledge assumed. Every figure shows a mechanism, and the two attention grids are computed on this page from the same rule the code uses.</p>
   <ul class="path">
@@ -426,6 +426,7 @@
   <h2 id="mask">6. The mask, kev versus Hev</h2>
   <p>Now the central figure. Both grids start from the causal triangle and remove cells. Kev's rule: a token may read the state, or anything earlier in its <em>own question</em>. Hev's rule adds one more clause: an option may read its own question's instruction and itself, but <strong>never a sibling option</strong>.</p>
   <p>Look at the rows for option 2 and option 3. In kev they reach back into option 1's columns. In Hev those cells are gone. That handful of cells is the entire architectural difference.</p>
+  <p>"kev" here means the revision Hev forked from, where this was the only mask rule. kev has since added an <span class="mono">option_isolation</span> switch of its own that removes the same cells, so the rule on the right is no longer Hev's alone — see <a href="#experiment">section 12</a>. What differs is that in Hev it is the only mask there is, paired with shared option positions and a readout that cannot see an index, rather than a flag that can be turned off.</p>
 
   <figure>
     <div class="grids">
@@ -618,7 +619,7 @@ sub = which option within that question (0 for the instruction)</code></pre>
     <dt>The loss</dt>
     <dd><span class="term" title="Cross-entropy: minus the log of the probability the model gave to the correct answer. Being confidently wrong is punished hard, being honestly unsure is punished gently.">Cross-entropy</span> against the labelled correct option. This is a <em>proper scoring rule</em>: the best strategy under it is to report your true belief, which is why the probabilities come out calibrated rather than merely ranked. An optional extra term for score questions penalises being far from the right level, not just wrong.</dd>
     <dt>The data</dt>
-    <dd>Kev's frozen decision-v2 training split: 3,432 records built from ten public classification datasets (banking intents, news topics, reviews, entailment, and so on), reshaped into the request format. During training the options are shuffled, "none of the above" is sometimes added as right or wrong, and irrelevant distractors are injected, all so the model learns to read evidence rather than memorise wording.</dd>
+    <dd>Kev's frozen training split, reshaped into the request format from ten public classification datasets (banking intents, news topics, reviews, entailment, and so on). The two published checkpoints used kev's <span class="mono">decision-v2</span> split, 3,432 records. The later controlled retrain used kev's current <span class="mono">decision-v4</span> split, 10,896 records, so that Hev and kev train on exactly the same rows. During training the options are shuffled, "none of the above" is sometimes added as right or wrong, irrelevant distractors are injected, and — on v4 — minimal pairs are built that differ only in whether the right answer is present, all so the model learns to read evidence rather than memorise wording.</dd>
     <dt>Temperature</dt>
     <dd>After training, one scalar is fitted on a separate calibration split to sharpen or soften every distribution. Fit there, never touched again.</dd>
   </dl>
@@ -644,25 +645,49 @@ sub = which option within that question (0 for the instruction)</code></pre>
       </g>
     </svg>
     </div>
-    <figcaption><strong>Same recipe as kev</strong>, on purpose: same backbone, same adapter shape, same learning rate schedule, same data, same augmentation. The only thing that differs between the two runs is the mask, the decide position, and the head. That is what makes the comparison fair.</figcaption>
+    <figcaption><strong>Same recipe as kev</strong>, on purpose: same backbone, same adapter shape, same learning rate schedule, same data, same augmentation. In the controlled retrain a guard refuses to start the run unless every shared knob matches kev's published trial. Three things still differ and are recorded rather than hidden: Hev trains in fp32 on an Apple M4 Max where kev trained in bf16 on an H100, and Hev reaches the same effective batch of eight by accumulating eight single-record steps. The fourth difference — the mask, the decide position and the head — is the thing being studied.</figcaption>
   </figure>
 
   <!-- ============================================================ 11 -->
-  <h2 id="experiment">12. The experiment, and what each outcome would mean</h2>
-  <p>Kev, on this exact data and recipe, scored 81.6% and 79.3% development accuracy across two seeds, and 62.0% and 62.1% on the out-of-distribution transfer set. Those are the numbers to sit next to.</p>
+  <h2 id="experiment">12. The experiment, and what it found</h2>
+  <p>The experiment ran in two stages. First on kev's <span class="mono">decision-v2</span> data, where Hev and kev trained on the same rows but were scored from each other's recorded ledgers. Then, because that left training data and architecture tangled together, a <strong>controlled retrain</strong>: Hev's pointer model trained on kev's own <span class="mono">decision-v4</span> split under kev's published recipe, three seeds, all scored by one evaluator against the released <span class="kv">kev-0.6b</span> checkpoint on identical rows. Everything below is the controlled stage, on development data. The locked test split has never been opened.</p>
+
   <table>
-    <thead><tr><th>Run</th><th>Question it answers</th><th>If it matches kev</th><th>If it falls short</th></tr></thead>
+    <thead><tr><th>Question</th><th>What happened</th></tr></thead>
     <tbody>
-      <tr><td><span class="hv">Hev Pointer</span></td><td>Was order sensitivity free to remove?</td><td>Yes. Zero flips at no accuracy cost. Strongest possible result.</td><td>Options need to compare with each other somewhere. Look at which sources dropped: high-K ones like 77-way banking intents would confirm it.</td></tr>
-      <tr><td><span class="hv">Hev Set</span></td><td>Is interaction enough, without order?</td><td>Options must interact but do not need order. Clean story.</td><td>Deep in-backbone comparison matters. Fallback: encode independently, shortlist the top few, re-score those with a set layer.</td></tr>
-      <tr><td>calibration</td><td>Are the probabilities still honest?</td><td>Expected, since the loss is unchanged.</td><td>Interesting on its own: the mask changed what the model can be uncertain about.</td></tr>
-      <tr><td>ablation</td><td>Does the level embedding earn its place?</td><td colspan="2">Zero it out and re-evaluate the score questions. If nothing changes, it can go.</td></tr>
+      <tr>
+        <td>Was order sensitivity free to remove?</td>
+        <td><strong>Nearly, on familiar questions.</strong> All three <span class="hv">Hev</span> seeds scored 80.67% on the ten public decision sources against <span class="kv">kev</span>'s 81.35% on the same 1,040 rows. Paired, that is kev ahead by 0.67 points at every seed, with every 95% interval crossing zero. The equivalence bar had been fixed in advance at 2.0 points and was missed by a hair, so the honest reading is "within a point, equivalence not demonstrated" — not parity.</td>
+      </tr>
+      <tr>
+        <td>What does it cost?</td>
+        <td><strong>A few points on unfamiliar questions.</strong> On the six out-of-distribution transfer sources kev led by 2.71, 5.42 and 1.46 points across the three seeds. kev measured the same direction and roughly the same size for its own isolation switch, which makes the encoding the likeliest explanation — but Hev trains in fp32 on Apple silicon and kev in bf16 on an H100, so this is not a clean attribution.</td>
+      </tr>
+      <tr>
+        <td>Is the order invariance real?</td>
+        <td><strong>Yes, exactly.</strong> Every distinct order of every eligible Choice question: <span class="hv">Hev</span> flipped <strong>0</strong> of 628 decision questions and <strong>0</strong> of 348 transfer questions at all three seeds, with the correct option's probability moving by about 1e-6 — floating-point noise, not behaviour. The released <span class="kv">kev</span> checkpoint flipped 43 (6.85%) and 87 (25.00%).</td>
+      </tr>
+      <tr>
+        <td>Are the probabilities still honest?</td>
+        <td><strong>Yes.</strong> Calibrated ECE on decision was 0.0400 / 0.0394 / 0.0280 across the Hev seeds against kev's 0.0391. The mask did not cost calibration.</td>
+      </tr>
+      <tr>
+        <td>Does the level embedding earn its place?</td>
+        <td><strong>Not shown.</strong> Zeroing it changes the score-question probabilities but produced no statistically supported improvement in likelihood. It stays in the checkpoint; it is not claimed as a benefit.</td>
+      </tr>
+      <tr>
+        <td>Was the set head needed?</td>
+        <td><strong>No.</strong> SetHead's decision gain over the simpler pointer was 0.25 points with an interval from &minus;1.17 to +1.58, and it was lower on transfer. High-K tasks like 77-way banking intents never fell far enough to need the shortlist fallback that had been prepared for them. The pointer is the default.</td>
+      </tr>
     </tbody>
   </table>
-  <p>Every run also reports the flip rate under reordering. For Hev it must be exactly zero, and reporting it is the check that the code matches the drawing above.</p>
+
+  <div class="callout k">
+    <strong>Two things this drawing got wrong, now corrected.</strong> Exact order invariance is <em>not</em> unique to Hev: kev has since shipped its own <span class="mono">option_isolation</span> switch and measured a 0.0 flip rate with it too, at a cost by its own measurement of about half a point on decision and 1.7 on transfer. And flip rates are only comparable when measured the same way — checking one shuffled order instead of all six reported 1.67% where six orders reported 6.85% <em>on the same checkpoint</em>, so any table mixing the two protocols understates the sensitive models roughly fourfold.
+  </div>
 
   <div class="callout">
-    <strong>After that, Hev stops being an ablation and becomes its own model.</strong> The isolation design makes each option a self-contained branch, which is what the next ideas need: an <em>extract</em> question type where the options are spans of the state itself, and <em>dependent questions</em> where one question's decide vector may be read by another, giving if-then logic in a single pass.
+    <strong>What the mechanism is, then.</strong> Not an accuracy win, and not a novelty claim. It is a property available by construction rather than bought with augmentation, at no measured decision-accuracy cost once data and recipe are held equal, with an unresolved transfer cost. The isolation design also makes each option a self-contained branch, which is what the next ideas need: an <em>extract</em> question type where the options are spans of the state itself, and <em>dependent questions</em> where one question's decide vector may be read by another, giving if-then logic in a single pass.
   </div>
 
   <!-- ============================================================ glossary -->

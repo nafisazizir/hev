@@ -82,7 +82,7 @@ Choice and noul get no index signal anywhere. Noul's `[no, yes]` order is fixed 
 - Delimiter tokens, `MAX_STATE`=384, `MAX_BRANCH`=1024, `MAX_PACKED`=2048.
 - Request and response JSON, confidence formulas, structured-content rendering.
 - LoRA targets and rank, cross-entropy objective, optional ranked-probability term for score.
-- Augmentation: option permutation, varied "none of the above", distractors, none minimal pairs.
+- Augmentation: option permutation, varied "none of the above", distractors, none minimal pairs. `hev.train --recipe kev-v4` refuses to start unless every shared knob matches kev's published v4 trial, and writes the deviations Hev cannot remove (precision, device, micro-batching, the encoding itself) into `training_config.json`.
 
 Keeping these identical is what makes kev's frozen suites and recorded numbers a valid baseline.
 
@@ -92,5 +92,10 @@ Token count per request is identical to kev's. The mask is denser in zeros (each
 
 ## Known risks
 
-- High-K choice (banking77, K=77) may suffer most from independent scoring, because "which of these 77 is closest" is inherently comparative. SetHead is the mitigation; D6 in DECISIONS.md is the fallback.
-- The `<decide>` vector cannot see options, so with PointerHead all comparison happens in the dot product. If that is too weak, a cheap upgrade is a bilinear form or an MLP on `[h_decide; h_opt_j; h_decide ⊙ h_opt_j]`, still invariant.
+- ~~High-K choice (banking77, K=77) may suffer most from independent scoring.~~ **Resolved by M2.** Both heads stayed above D6's banking77 threshold, so the shortlist fallback was not built ([D10](DECISIONS.md), [aggregate](../runs/m2-comparison-s0/result.json)). Independent scoring is not the bottleneck it was expected to be.
+- **Out-of-source transfer is where isolation costs something.** With training data, recipe and augmentation matched to kev, the three v4 retrains trail the released kev by 1.46 to 5.42 points on the public transfer sources while staying within 0.67 points on decision ([M4b](RESULTS.md), [aggregate](../runs/m4b-v4-three-seed/result.json)). kev's own `option_isolation` measurement moved the same direction by about the same amount, which makes the encoding the likeliest cause, but precision, hardware and micro-batching still differ, so it is not a controlled attribution.
+- The `<decide>` vector cannot see options, so with PointerHead all comparison happens in the dot product. If that is too weak, a cheap upgrade is a bilinear form or an MLP on `[h_decide; h_opt_j; h_decide ⊙ h_opt_j]`, still invariant. Whether SetHead-style interaction recovers the transfer gap is untested: SetHead was never retrained on v4.
+
+## What this design does not claim
+
+Exact order invariance is a property of the mask, independently implementable and independently implemented: kev at HEAD has its own `option_isolation` flag and measures a 0.0 flip rate with it at 0.6B. Nothing here shows invariance improves accuracy. The claim is that the property is available by construction rather than by augmentation, and at no measured decision-accuracy cost once data and recipe are held equal.

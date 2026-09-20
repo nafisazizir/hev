@@ -93,13 +93,19 @@ Step 2 of the controlled comparison: train Hev's PointerHead on kev's own traini
 
 Exit met 2026-09-21 by the immutable [three-seed aggregate](runs/m4b-v4-three-seed/result.json). Sanity gate passed at zero difference; every seed passed the mechanism checks with zero flips. On the primary decision population kev leads by 0.67 points at every seed with every 95% interval crossing zero and the 90% upper bounds at 2.21 / 2.02 / 2.02 against the 2.0 margin, so all three are inconclusive rather than equivalent. On primary transfer kev leads by 2.71 / 5.42 / 1.46 points, kev-better at seed 1 and inconclusive at the others; three-seed mean +3.19. Calibration is comparable. The M4 step 1 decision gap was mostly data, as D14 expected; the transfer gap is consistent with kev's own isolation measurement. Precision and hardware still differ. Outcome recorded in [D16](docs/DECISIONS.md); tables in [docs/RESULTS.md](docs/RESULTS.md).
 
-### M5. Beyond the first result (pick after M4)
+### M5. Beyond the first result  (next; not started, protocol not yet predeclared)
 
-Candidates, in rough order of value:
+M4 and M4b are both closed. Nothing below has a predeclared protocol yet, and each candidate needs one written into DECISIONS.md before any run.
+
+The candidate M4b motivates directly ([D16](docs/DECISIONS.md)) is the transfer question: with data and recipe matched, isolation still costs 1.46 to 5.42 points on the public transfer sources. Whether that is a capacity effect (kev saw it grow at 4B), a data effect, or an artifact of the pointer readout that SetHead-style interaction could recover is the one thing the current evidence cannot separate. This is a new protocol, not an extension of D15.
+
+The rest, in rough order of value:
 - Extract question type: pointer over state spans, still no decoding. A capability Jev does not have.
 - Dependent questions: a declared DAG where question B's branch may read question A's decide token.
-- Calibration that transfers: per-question learned temperature or evidential head, scored on transfer-v2.
-- Kev's v3/v4 compositional suites (kev `evals/v3`, `evals/v4`) for a harder transfer test.
+- Calibration that transfers: per-question learned temperature or evidential head.
+- Whether to republish the Hub revisions from the v4 retrains instead of the v2 checkpoints. If taken, all three seeds go up together and none is selected ([D16](docs/DECISIONS.md)).
+
+Dropped as already done: kev's v4 compositional suites are copied in and were the substrate for M4/M4b.
 
 ## Not doing
 

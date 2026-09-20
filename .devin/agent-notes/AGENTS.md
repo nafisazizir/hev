@@ -6,7 +6,9 @@ Orientation for any agent or contributor starting a fresh session on this repo. 
 
 Hev is Nafis's research project: a Jev-style decision model (typed questions, probabilities out, single prefill, no decoding) whose one deliberate departure from kev is **option-level isolation** in the attention mask plus a permutation-equivariant readout. README.md has the pitch, docs/DESIGN.md has the mechanism, docs/DECISIONS.md has the why.
 
-The sibling repo `/Users/nafis/Documents/personal/kev` is Jared Palmer's kev (clone at commit cc954f2). It is the reference implementation and the source of the eval suites. docs/KEV.md maps its files and says what to port and what not to.
+The sibling repo `/Users/nafis/Documents/personal/kev` is Jared Palmer's kev, now at HEAD `20fa626` (2026-09-19 22:35 EDT). Hev's M0-M3 were built against the earlier `cc954f2` pin; the v2 suites and the borrowed API/augmentation code come from that pin, while the v4 suites and the vendored `hev/kev_model.py` come from 20fa626. It is the reference implementation and the source of the eval suites. docs/KEV.md maps its files, records what changed between the two commits, and says what to port and what not to.
+
+Two framings that were true early in the project are now wrong and must not be reintroduced (D14): exact option-order invariance is **not** unique to Hev, because kev at HEAD ships its own `option_isolation` flag and has measured a 0.0 flip rate with it at 0.6B; and flip rates measured under different numbers of orders must never appear in one table, because the one-permutation protocol reports about a quarter of what six orders report on the same checkpoint.
 
 ## Working rules
 
@@ -94,7 +96,30 @@ uv run python -m hev.three_way \
 
 The M3 Jev and three-way output directories above are immutable and must not be reused. Failed attempts retained under `runs/m3-jev-calibration-v2`, `runs/m3-jev-direct-calibration-v2`, and `runs/m3-three-way-v2` must also not be reused.
 
-M4b commands (started 2026-09-20; output paths are immutable and must not be reused). Seed 0 trains as `-s0-r1` because the predeclared `runs/m4b-pointer-v4-s0` is a killed-launch stub (D15 addendum). `evals/decision-v4/train.jsonl` is git-ignored; `hev.train` fetches it from the pinned Hub mirror on first use.
+M4 step 1 commands (completed 2026-09-20; evaluation only, no training; output paths are immutable and must not be reused). The released kev checkpoint is scored through the vendored kev packing with `--checkpoint-kind kev`; the two v2-trained Hev checkpoints need `--allow-cross-suite` because their training suite is decision-v2:
+
+```bash
+uv run python -m hev.evaluate --run hf://jaredpalmer/kev-0.6b@83e05fabf7ef08e343bb4daf144e08777f99713d \
+  --checkpoint-kind kev --suite evals/decision-v4 --transfer evals/transfer-v4 \
+  --out runs/m4-kev-0.6b-v4-r1 --device mps --seed 1 --permutations 6 --bootstrap-samples 10000
+
+for s in 0 1; do src=runs/m2-pointer-s0; [ $s = 1 ] && src=runs/m3-pointer-s1
+uv run python -m hev.evaluate --run $src --suite evals/decision-v4 --transfer evals/transfer-v4 \
+  --out runs/m4-hev-pointer-s$s-v4 --device mps --seed 1 --permutations 6 --bootstrap-samples 10000 --allow-cross-suite
+done
+
+uv run python -m hev.released \
+  --kev runs/m4-kev-0.6b-v4-r1 \
+  --hev-seed0 runs/m4-hev-pointer-s0-v4 --hev-seed1 runs/m4-hev-pointer-s1-v4 \
+  --kev-hub-result /Users/nafis/.cache/huggingface/hub/models--jaredpalmer--kev-0.6b/snapshots/83e05fabf7ef08e343bb4daf144e08777f99713d/result.json \
+  --kev-seed1 /Users/nafis/Documents/personal/kev/runs/v4-06b-hardened/01-trial-1/result.json \
+  --kev-seed2 /Users/nafis/Documents/personal/kev/runs/v4-06b-hardened/02-trial-2/result.json \
+  --out runs/m4-released-v4-r2 --bootstrap-samples 10000 --seed 20260920
+```
+
+Three M4 step 1 directories are retained failures and must never be reused: `runs/m4-released-v4` (aggregate validated the training suite hash instead of the evaluated one), `runs/m4-released-v4-r1` (the evaluator did not record the scored kev checkpoint's architecture flags), and `runs/m4-kev-0.6b-v4` (the first kev evaluation, superseded by `-r1`, which reproduced it exactly including every permutation statistic).
+
+M4b commands (completed 2026-09-21; output paths are immutable and must not be reused). Seed 0 trains as `-s0-r1` because the predeclared `runs/m4b-pointer-v4-s0` is a killed-launch stub (D15 addendum). `evals/decision-v4/train.jsonl` is git-ignored; `hev.train` fetches it from the pinned Hub mirror on first use.
 
 ```bash
 for s in 0 1 2; do out=runs/m4b-pointer-v4-s$s; [ $s = 0 ] && out=runs/m4b-pointer-v4-s0-r1

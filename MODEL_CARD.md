@@ -143,7 +143,7 @@ The mathematical mechanism is permutation-equivariant; observed differences arou
 
 ## Training Data
 
-Training uses the frozen `decision-v2` train partition: 3,432 records and 4,332 questions.
+The **published** `seed-0` and `seed-1` checkpoints use the frozen `decision-v2` train partition: 3,432 records and 4,332 questions. The unpublished v4 retrains behind this card's headline evaluation use kev's own `decision-v4` train partition instead; see [The v4 controlled retrain](#the-v4-controlled-retrain) below.
 
 | Source | Records | Conversion |
 |---|---:|---|
@@ -181,6 +181,30 @@ Eval-only sources are permanently refused during training: MMLU, Emotion, TweetE
 | Seeds | 0 and 1, both reported |
 
 Training data is augmented independently each epoch from deterministic per-record seeds. Runs refuse existing output directories and retain failures.
+
+### The v4 controlled retrain
+
+The three checkpoints behind this card's headline evaluation are **not published**. They exist to remove the training-data confound from the kev comparison, and they are reported together with no seed selected.
+
+Data is kev's `decision-v4` train partition: 10,896 records and 13,896 questions (sha256 `cb55b79e…`), fetched from kev's pinned Hub mirror and verified against the suite manifest. Which arms may train is read from the manifest rather than hard-coded, so the synthetic `legacy_policy` and `compositional` arms train while `contrastive` never does. The same six eval-only sources remain permanently refused.
+
+| | |
+|---|---|
+| Recipe guard | `--recipe kev-v4`; refuses to start unless every shared knob matches kev's `v4-06b-hardened` trial |
+| Objective | Record-mean cross-entropy; ranked-probability weight 0 |
+| Optimizer | AdamW, lr `2e-4`, weight decay 0.01, OneCycle schedule, 10% warm-up |
+| Batch | 1 record, gradient accumulation 8, effective batch 8 |
+| Epochs | 2 |
+| Steps | 2,724 per seed |
+| Exposure | 21,792 records, ~33,000 questions per seed, including ~5,300 none-pair minimal-pair records |
+| Augmentation | kev's v4 settings: `p_none` 0.1, `p_none_distract` 0.12, `p_distract` 0.15, `p_none_pair` 0.25 |
+| Hardware | Apple M4 Max, 36 GB unified memory, PyTorch MPS, fp32 |
+| Wall time | 105.6 / 88.9 / 81.5 minutes for seeds 0 / 1 / 2 |
+| Peak MPS allocation | 3.42 / 3.13 / 3.22 GB |
+| Calibration temperature | 1.682 / 1.682 / 1.803, fit on `decision-v4` calibration only |
+| Seeds | 0, 1 and 2, all reported |
+
+Four deviations from kev cannot be removed on this machine and are recorded in each run's `training_config.json` rather than glossed: fp32 against kev's bf16 autocast, Apple MPS against an H100, batch 1 with accumulation 8 against batch 8 with no accumulation, and the option-isolating encoding itself, which is the object of study. Four kev knobs Hev does not implement (`perm_kl`, `anchor_w`, `head_dim`, `special_embeddings`) were all at kev's default in the reference trial. [Seed 0](runs/m4b-eval-v4-s0/result.json), [seed 1](runs/m4b-eval-v4-s1/result.json), [seed 2](runs/m4b-eval-v4-s2/result.json)
 
 ## Evaluation
 

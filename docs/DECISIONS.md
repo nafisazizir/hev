@@ -34,9 +34,11 @@ Why: ordinal levels are ordered by definition. Without any index signal the mode
 
 Rejected: injecting the index into the backbone (as a token or position offset). That would reintroduce order sensitivity inside the backbone, where it is hardest to bound. Readout-only keeps the backbone invariant for every type.
 
-## D6. Fallback if pointer loses badly on high-K choice  (2026-09-19, provisional)
+## D6. Fallback if pointer loses badly on high-K choice  (2026-09-19, provisional; **closed by D10, 2026-09-20, not built**)
 
 If banking77-style tasks drop by more than about 5 points with both heads, the fallback is a two-stage readout: independent option encoding as now, then a top-M shortlist re-scored by a positionless set layer over only those M. Still equivariant; recovers deeper comparison among plausible options. Not to be built until M2 shows it is needed.
+
+**Outcome.** M2 kept both heads above the banking77 threshold, so the shortlist was never built. [D10](#d10-m2-selects-pointerhead-as-the-default--2026-09-20), [aggregate](../runs/m2-comparison-s0/result.json)
 
 ## D7. Tests run offline against a tiny random backbone  (2026-09-19)
 

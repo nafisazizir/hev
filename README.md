@@ -161,7 +161,7 @@ Offline tests:
 PYTHONDONTWRITEBYTECODE=1 uv run pytest -p no:cacheprovider
 ```
 
-Train the selected seed-0 recipe:
+Train the published `seed-0` checkpoint (decision-v2 recipe):
 
 ```bash
 uv run python -m hev.train \
@@ -189,6 +189,55 @@ uv run python -m hev.evaluate \
   --run runs/pointer-s0 \
   --suite evals/decision-v2 \
   --transfer evals/transfer-v2 \
+  --device mps \
+  --seed 1 \
+  --permutations 6 \
+  --bootstrap-samples 10000
+```
+
+Reproduce the headline M4b retrain instead (kev's data and recipe; `--recipe kev-v4` refuses to start unless every shared knob matches, and `decision-v4/train.jsonl` is fetched from kev's pinned Hub mirror and checksum-verified on first use):
+
+```bash
+uv run python -m hev.train \
+  --suite evals/decision-v4 \
+  --out runs/pointer-v4-s0 \
+  --head pointer \
+  --device mps \
+  --seed 0 \
+  --epochs 2 \
+  --lr 2e-4 \
+  --lora 16 \
+  --batch 1 \
+  --accum 8 \
+  --ord-w 0 \
+  --p-none 0.1 \
+  --p-none-distract 0.12 \
+  --p-distract 0.15 \
+  --p-none-pair 0.25 \
+  --objective-records 1024 \
+  --recipe kev-v4 \
+  --require-loss-decrease
+
+uv run python -m hev.evaluate \
+  --run runs/pointer-v4-s0 \
+  --suite evals/decision-v4 \
+  --transfer evals/transfer-v4 \
+  --out runs/eval-v4-s0 \
+  --device mps \
+  --seed 1 \
+  --permutations 6 \
+  --bootstrap-samples 10000
+```
+
+Score the released kev checkpoint on the same rows, through kev's own packing:
+
+```bash
+uv run python -m hev.evaluate \
+  --run hf://jaredpalmer/kev-0.6b \
+  --checkpoint-kind kev \
+  --suite evals/decision-v4 \
+  --transfer evals/transfer-v4 \
+  --out runs/kev-0.6b-v4 \
   --device mps \
   --seed 1 \
   --permutations 6 \
