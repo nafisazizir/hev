@@ -786,6 +786,13 @@ def kev_provenance(predictor):
         "checkpoint": metadata.get("checkpoint"),
         "kev_source": metadata.get("kev_source"),
         "training_args": metadata.get("training_args"),
+        # Architecture flags of the checkpoint that was actually scored. They are recorded
+        # explicitly because an order-sensitivity result is only interpretable against the
+        # packing that produced it: option_isolation True would make invariance architectural.
+        "option_isolation": metadata.get("option_isolation"),
+        "special_embeddings": metadata.get("special_embeddings"),
+        "head_dim": metadata.get("head_dim"),
+        "lora": metadata.get("lora"),
     }
 
 

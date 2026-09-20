@@ -100,9 +100,13 @@ def load_evaluation(path, label):
 
 def suite_hashes(result):
     return {
-        "decision": lookup(result, "evaluation_suite.decision_sha256", "evaluation_suite.sha256",
-                           "evaluation_suite.suite_sha256", "training_suite_sha256"),
-        "transfer": lookup(result, "evaluation_suite.transfer_sha256", "transfer_suite_sha256"),
+        # The suite that was actually scored. Under --allow-cross-suite a Hev result's
+        # training_suite_sha256 is the checkpoint's own (decision-v2) suite, so it must never be
+        # the first choice here: D13 requires validating what was evaluated, not what was trained on.
+        "decision": lookup(result, "evaluation_suite.manifest_sha256", "evaluation_suite.decision_sha256",
+                           "evaluation_suite.sha256", "evaluation_suite.suite_sha256", "training_suite_sha256"),
+        "transfer": lookup(result, "transfer_suite.manifest_sha256", "evaluation_suite.transfer_sha256",
+                           "transfer_suite_sha256"),
     }
 
 

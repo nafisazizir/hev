@@ -10,7 +10,7 @@ Small, option-order-invariant decision model. Typed questions in, calibrated pro
 
 Hev is a LoRA adapter and PointerHead on `Qwen/Qwen3-0.6B-Base`. It reads one state, answers many typed questions in parallel and returns probability distributions without generating text.
 
-Its experiment is narrow: kev isolates questions; Hev also isolates every option from its sibling options. Every option receives the same positions and can attend only to the state, its question and itself. Reordering Choice options therefore cannot change their backbone representations. The readout is permutation-equivariant, so semantic answers are invariant by construction.
+Its experiment is narrow: the kev version Hev forked from isolates questions; Hev also isolates every option from its sibling options. Every option receives the same positions and can attend only to the state, its question and itself. Reordering Choice options therefore cannot change their backbone representations. The readout is permutation-equivariant, so semantic answers are invariant by construction. kev has since added its own `option_isolation` flag, so the mechanism is no longer unique to Hev.
 
 Hev is an independent research project. It is not Jev, is not affiliated with TypeSafe and does not claim to reproduce Jev's private implementation.
 
@@ -123,26 +123,35 @@ See [DESIGN](docs/DESIGN.md) for the mask, positions and invariance argument. Op
 
 All numbers are on frozen **development** splits. The locked test split has not been accessed.
 
-| Model | Decision accuracy | Transfer accuracy | Decision calibrated ECE |
-|---|---:|---:|---:|
-| **Hev PointerHead** | **80.00%** (79.33–80.67) | **60.71%** (60.36–61.07) | **0.020** |
-| kev Qwen3-0.6B | 80.46% (79.33–81.58) | 62.05% (61.96–62.14) | 0.030 |
-| Jev `1.13.0` | 83.50% | 85.36% | 0.103 |
+The current headline is M4 step 1: an evaluation-only comparison of the released `jaredpalmer/kev-0.6b` checkpoint against both Hev PointerHead seeds, scored by one evaluator on the same `decision-v4` and `transfer-v4` development rows. It is a same-items, **different-training** comparison. kev trained on 10,896 decision-v4 records with none-of-the-above minimal pairs on an H100; Hev trained on 3,432 decision-v2 records with no such pairs on Apple MPS. Nothing here is evidence about architecture.
 
-Hev and kev are two-seed means with ranges. Jev is one hosted snapshot, not a seed average. This is the same evaluation, not a controlled training comparison: systems differ in architecture, training, compute and availability.
+Primary population: the ten public decision sources and six public transfer sources that both models were treated identically on. Intervals are 95% source-stratified, clustered bootstrap intervals with 10,000 draws.
+
+| Model | Decision accuracy, n=1040 | Transfer accuracy, n=480 | Decision calibrated ECE |
+|---|---:|---:|---:|
+| kev-0.6b released, seed 0 | **81.35%** (78.85–83.75) | **65.42%** (61.46–69.38) | 0.0391 |
+| Hev PointerHead, seed 0 | 79.71% (77.12–82.12) | 64.38% (60.42–68.33) | **0.0221** |
+| Hev PointerHead, seed 1 | 77.50% (74.90–80.00) | 63.96% (60.00–67.92) | 0.0492 |
+
+On this population Hev is behind kev: by 1.63 points on decision at seed 0, with a 95% interval of (−0.38, +3.75) that crosses zero, and by 3.85 points at seed 1, with a 95% interval of (+1.73, +5.96) that excludes zero. Transfer is inconclusive at both seeds. Neither seed reaches the predeclared equivalence bar.
+
+The policy arms of the v4 suites are reported separately and carry no verdict, because kev's v4 training data was built to teach those structures and Hev has never seen them.
 
 ### Option order
 
-| Model | Protocol | Decision flips | Transfer flips | Probability movement |
-|---|---|---:|---:|---:|
-| **Hev Pointer seed 0** | six orders, all eligible Choice | **0 / 696** | **0 / 348** | p90 correct-probability spread `1.25e-6` / `2.74e-6` |
-| **Hev Pointer seed 1** | six orders, all eligible Choice | **0 / 696** | **0 / 348** | p90 spread `1.45e-6` / `2.86e-6` |
-| kev seed 0 / 1 | clean plus one fixed permutation | 5.56% / 4.17% of 72 | 8.33% / 8.33% of 36 | mean max change `0.047` / `0.026`; transfer `0.090` / `0.083` |
-| Jev `1.13.0` | clean plus one fixed permutation | 1.39% of 72 | 0% of 36 | maximum change `0.456` / `0.200` |
+Exhaustive six-order protocol, every distinct order on every eligible Choice question, the same protocol for all three checkpoints.
 
-The protocols differ: Hev receives the stronger exhaustive study; kev and Jev use one frozen permutation. The result supports exact Hev invariance. It does not show that invariance improves accuracy, and zero observed Jev transfer flips do not establish Jev's architecture.
+| Model | Decision flips of 628 | Transfer flips of 348 | Decision p90 correct-probability spread |
+|---|---:|---:|---:|
+| **Hev Pointer seed 0** | **0** | **0** | `1.33e-6` |
+| **Hev Pointer seed 1** | **0** | **0** | below the `1e-4` mechanism tolerance |
+| kev-0.6b released, seed 0 | 43 (6.85%) | 87 (25.00%) | 0.1334 |
 
-Full metrics, uncertainty, calibration caveats and task breakdowns are in [RESULTS](docs/RESULTS.md). The authoritative aggregate is [`runs/m3-three-way-v2-r1/result.json`](runs/m3-three-way-v2-r1/result.json).
+Two things this table corrects. First, protocol matters: kev's own clean-versus-one-permutation protocol on this same checkpoint reported 1.67% over 60 cases, so the one-permutation numbers quoted in earlier Hev tables for kev and Jev understate flips by roughly a factor of four. Second, exact order invariance is **not unique to Hev**: kev at HEAD ships its own `option_isolation` flag and measured a 0.0 flip rate with it at 0.6B, at a cost of roughly half a point of decision accuracy and 1.7 points of transfer accuracy by its own controlled measurement.
+
+The earlier M3 three-way comparison with Jev is a separate, earlier result on the different `decision-v2` and `transfer-v2` suites, with mismatched order protocols. It is not comparable to the table above and is kept in [RESULTS](docs/RESULTS.md).
+
+Full metrics, uncertainty, calibration, the contamination check and the training-difference caveat are in [RESULTS](docs/RESULTS.md). The authoritative M4 aggregate is [`runs/m4-released-v4-r2/result.json`](runs/m4-released-v4-r2/result.json).
 
 ## Reproduce
 
@@ -205,7 +214,12 @@ After `hf auth login`, omit `--dry-run`. Repeat with `runs/m3-pointer-s1` and `-
 ## Limitations
 
 - **Development-only.** No locked-test claim has been made.
-- **Transfer remains weak.** Two-seed transfer accuracy is 60.71%; MMLU and held-out deadline are notable failures.
+- **Behind the released kev on the fair population.** On the ten public decision sources Hev is 1.63 points behind `kev-0.6b` at seed 0, with a 95% interval that crosses zero, and 3.85 points behind at seed 1, with a 95% interval that excludes zero. [Evidence](runs/m4-released-v4-r2/result.json)
+- **The kev comparison is confounded by training data.** kev trained on roughly three times as many records, on a newer suite, with none-of-the-above minimal pairs and on different hardware. No accuracy difference can be attributed to architecture. [Evidence](runs/m4-released-v4-r2/result.json)
+- **Exact order invariance is not unique to Hev.** kev implements its own `option_isolation` and measured a 0.0 flip rate with it at 0.6B. Invariance is also not shown to improve accuracy. [Evidence](runs/m4-released-v4-r2/result.json)
+- **Policy and compositional structures are untrained.** Hev has never seen the v4 policy arms; results there are descriptive only.
+- **Transfer remains weak.** Primary transfer accuracy is 64.38% at seed 0 and 63.96% at seed 1. On the held-out policy arms, which Hev never trained on, it is 47.16% and 42.61%. [Evidence](runs/m4-released-v4-r2/result.json)
+- **Seed variance is real.** Two seeds of the same recipe span 79.71% and 77.50% on primary decision accuracy and 0.0221 and 0.0492 on calibrated ECE. Neither seed is selected as best, and differences between systems smaller than this span are not meaningful. [Evidence](runs/m4-released-v4-r2/result.json)
 - **Small backbone.** 0.6B parameters limit knowledge and multi-step reasoning.
 - **English and classification shaped.** Code, long workflows, multilingual use and open-ended generation are outside training.
 - **Calibration does not transfer automatically.** Measure it on labelled outcomes from the target workflow.

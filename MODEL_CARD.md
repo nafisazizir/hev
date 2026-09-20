@@ -30,30 +30,42 @@ metrics:
   - nll
   - brier_score
 model-index:
-  - name: hev-0.6b PointerHead development mean
+  - name: hev-0.6b PointerHead seed 0
     results:
       - task: { type: text-classification, name: typed decision }
-        dataset: { type: mixed, name: decision-v2 development }
+        dataset: { type: mixed, name: decision-v4 development, public sources }
         metrics:
-          - { type: accuracy, value: 0.8000 }
-          - { type: expected_calibration_error, value: 0.0202, name: calibrated ECE }
+          - { type: accuracy, value: 0.7971 }
+          - { type: expected_calibration_error, value: 0.0221, name: calibrated ECE }
       - task: { type: text-classification, name: out-of-source typed decision }
-        dataset: { type: mixed, name: transfer-v2 development }
+        dataset: { type: mixed, name: transfer-v4 development, public sources }
         metrics:
-          - { type: accuracy, value: 0.6071 }
+          - { type: accuracy, value: 0.6438 }
+  - name: hev-0.6b PointerHead seed 1
+    results:
+      - task: { type: text-classification, name: typed decision }
+        dataset: { type: mixed, name: decision-v4 development, public sources }
+        metrics:
+          - { type: accuracy, value: 0.7750 }
+          - { type: expected_calibration_error, value: 0.0492, name: calibrated ECE }
+      - task: { type: text-classification, name: out-of-source typed decision }
+        dataset: { type: mixed, name: transfer-v4 development, public sources }
+        metrics:
+          - { type: accuracy, value: 0.6396 }
 ---
 
 # Model Card: hev-0.6b
 
 `hev-0.6b` is a small, prefill-only decision model. It takes one state and typed questions, then returns a probability distribution for each question in one forward pass. It does not generate text.
 
-The model is a LoRA adapter and PointerHead on `Qwen/Qwen3-0.6B-Base`. Its defining change from kev is option-level isolation: every option receives the same positions and cannot attend to sibling options. Choice outputs are therefore permutation-equivariant by construction.
+The model is a LoRA adapter and PointerHead on `Qwen/Qwen3-0.6B-Base`. Its defining change from the kev revision it forked from is option-level isolation: every option receives the same positions and cannot attend to sibling options. Choice outputs are therefore permutation-equivariant by construction. kev has since added an `option_isolation` flag of its own, so the mechanism is no longer unique to Hev.
 
 This is a **development-only research prototype**. It is not a production decision system, is not Jev and is not affiliated with TypeSafe.
 
 - Code, design, training and evaluation: [github.com/nafisazizir/hev](https://github.com/nafisazizir/hev)
 - Planned Hub layout: `OWNER/hev-0.6b`, revisions `seed-0` and `seed-1`
-- Full result ledger: [`runs/m3-three-way-v2-r1/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m3-three-way-v2-r1/result.json)
+- Current result ledger (M4, v4 development): [`runs/m4-released-v4-r2/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m4-released-v4-r2/result.json)
+- Earlier three-way ledger (M3, v2 development): [`runs/m3-three-way-v2-r1/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m3-three-way-v2-r1/result.json)
 
 ## Model Details
 
@@ -78,9 +90,9 @@ The head input size is the Qwen3-0.6B hidden size. The model reuses five existin
 
 ## Checkpoints
 
-The two checkpoints use the same predeclared recipe. They are reported together; neither was selected as best.
+The two checkpoints use the same predeclared recipe. They are reported together; neither was selected as best. The figures below are the `decision-v2` / `transfer-v2` development results those checkpoints were evaluated on at training time, with the temperature fitted on `decision-v2` calibration. The current headline evaluation is on the v4 development suites and is in [Evaluation](#evaluation).
 
-| Revision | Training seed | Decision accuracy | Transfer accuracy | Calibration temperature |
+| Revision | Training seed | decision-v2 accuracy | transfer-v2 accuracy | decision-v2 calibration temperature |
 |---|---:|---:|---:|---:|
 | `seed-0` | 0 | 80.67% | 61.07% | 1.932 |
 | `seed-1` | 1 | 79.33% | 60.36% | 1.866 |
@@ -171,52 +183,73 @@ Training data is augmented independently each epoch from deterministic per-recor
 
 ## Evaluation
 
-All reported results use frozen **development** partitions. The locked test split has not been accessed.
+All reported results use frozen **development** partitions. The locked test split has not been accessed. No number in this card is a test-set result.
 
-### Accuracy And Calibration
+### v4 development: current headline
 
-| Model | Decision accuracy | Transfer accuracy | Decision raw NLL | Decision calibrated NLL / ECE / Brier |
+Both checkpoints were re-scored on kev's frozen `decision-v4` and `transfer-v4` development splits alongside the released `jaredpalmer/kev-0.6b` checkpoint (Hub snapshot `83e05fabf7ef08e343bb4daf144e08777f99713d`, seed 0 of 3), using one evaluator and identical rows. The primary population is the ten public decision sources and the six public transfer sources: both models trained on the decision ten and neither trained on the transfer six. Intervals are 95% source-stratified, clustered bootstrap intervals with 10,000 draws. Temperature was fitted per model on `decision-v4` calibration only and applied unchanged to transfer.
+
+| Model | Decision accuracy, n=1040 | Transfer accuracy, n=480 | Decision calibrated ECE | Decision calibrated Brier |
 |---|---:|---:|---:|---:|
-| **Hev PointerHead** | **80.00%** | **60.71%** | 0.606 | 0.502 / 0.020 / 0.269 |
-| kev Qwen3-0.6B | 80.46% | 62.05% | 0.604 | 0.511 / 0.030 / 0.272 |
-| Jev `1.13.0` | 83.50% | 85.36% | 0.813* | 0.544 / 0.103 / 0.274 |
+| kev-0.6b released, seed 0 | 81.35% (78.85–83.75) | 65.42% (61.46–69.38) | 0.0391 | 0.2702 |
+| **Hev PointerHead, seed 0** | 79.71% (77.12–82.12) | 64.38% (60.42–68.33) | 0.0221 | 0.2798 |
+| **Hev PointerHead, seed 1** | 77.50% (74.90–80.00) | 63.96% (60.00–67.92) | 0.0492 | 0.3036 |
 
-Hev and kev are two-seed means. Jev is one hosted snapshot. `*` Jev returns rounded probabilities, including zeros, so NLL depends on the `1e-9` floor.
+Paired kev minus Hev differences on identical rows: on decision, +1.63 points at Hev seed 0 with a 95% interval of (−0.38, +3.75), and +3.85 points at seed 1 with a 95% interval of (+1.73, +5.96); on transfer, +1.04 points at seed 0 with (−3.75, +5.63) and +1.46 points at seed 1 with (−3.33, +6.04). Under the protocol fixed before the runs, seed 0 on decision is inconclusive, seed 1 on decision is a kev win, and both transfer comparisons are inconclusive. Neither seed meets the equivalence bar.
 
-Hev versus Jev is not a controlled training comparison. Training data, architecture, compute and availability differ. The Hev and kev recipes share data and model size, but the recorded Kev baselines trained on H100/bf16/batch 8 while Hev trained on MPS/fp32 with gradient accumulation.
+**Hev is behind the released kev on this population.** The comparison is confounded and cannot be read as an architecture result: kev trained on 10,896 `decision-v4` records with none-of-the-above minimal pairs on 25% of Choice records, in bf16 on one H100, while Hev trained on 3,432 `decision-v2` records with no such pairs, in fp32 on Apple MPS. The base model, its pinned revision, LoRA rank, learning rate, epoch count and effective batch size are the same. The two training sets share 1,303 states.
 
-### Choice Accuracy
+The v4 suites also contain policy arms (`compositional`, `legacy_policy`, `composition_holdout`, `legacy_holdout`) that kev's v4 data was built to teach and Hev has never seen. They are reported separately, carry no verdict and support no comparison: on decision policy arms (n=224) kev scores 76.34% against Hev's 68.75% and 66.96%; on transfer policy arms (n=176) kev scores 44.32% against Hev's 47.16% and 42.61%. Mixing them into an all-rows figure gives 80.46% / 77.77% / 75.63% on decision over 1,264 rows and 59.76% / 59.76% / 58.23% on transfer over 656 rows.
 
-| Model | Decision Choice | Transfer Choice |
-|---|---:|---:|
-| Hev PointerHead, two-seed mean | 85.52% | 61.67% |
-| Jev `1.13.0` | 89.79% | 82.50% |
-| kev | unavailable in its checked-in v2 artifacts |
+Contamination was checked before any result existed: zero states are shared between either model's training rows and either graded split. One state is shared between Hev's training rows and `decision-v4` calibration, affecting only the one-parameter temperature fit.
 
-Exact order invariance does not imply higher Choice accuracy.
+The evaluator was validated first. Re-scoring the released kev checkpoint reproduced kev's own published development accuracy exactly, 0.8045886075949367 on decision and 0.5975609756097561 on transfer, an absolute difference of 0.0 on both.
+
+Full tables and the artifact are in [RESULTS](https://github.com/nafisazizir/hev/blob/main/docs/RESULTS.md) and [`runs/m4-released-v4-r2/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m4-released-v4-r2/result.json).
+
+### v2 development: earlier comparison
+
+The earlier M3 comparison ran on the different `decision-v2` and `transfer-v2` suites and included a hosted Jev snapshot. It is a separate result on separate items and is not comparable to the v4 table above.
+
+| Model | decision-v2 accuracy | transfer-v2 accuracy | decision-v2 calibrated ECE |
+|---|---:|---:|---:|
+| Hev PointerHead, two-seed mean | 80.00% | 60.71% | 0.020 |
+| kev Qwen3-0.6B, two-seed mean | 80.46% | 62.05% | 0.030 |
+| Jev `1.13.0` | 83.50% | 85.36% | 0.103 |
+
+Jev returns rounded probabilities, so its NLL is floor-sensitive. Details are in [RESULTS](https://github.com/nafisazizir/hev/blob/main/docs/RESULTS.md) and [`runs/m3-three-way-v2-r1/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m3-three-way-v2-r1/result.json).
 
 ### Option Order
 
-| Model | Protocol | Decision flips | Transfer flips |
-|---|---|---:|---:|
-| **Hev Pointer seed 0** | six orders, all eligible Choice | **0 / 696** | **0 / 348** |
-| **Hev Pointer seed 1** | six orders, all eligible Choice | **0 / 696** | **0 / 348** |
-| kev seed 0 / 1 | clean plus one fixed permutation | 5.56% / 4.17% of 72 | 8.33% / 8.33% of 36 |
-| Jev `1.13.0` | clean plus one fixed permutation | 1.39% of 72 | 0% of 36 |
+All three v4 checkpoints received the same exhaustive protocol: every distinct order of six, on every eligible Choice question.
 
-Hev's decision p90 correct-probability spread is at most `1.45e-6`; transfer is at most `2.86e-6`. Jev's maximum aligned probability movement is 0.456 on decision and 0.200 on transfer despite few observed argmax flips.
+| Model | Decision flips of 628 | Transfer flips of 348 | Decision p90 correct-probability spread |
+|---|---:|---:|---:|
+| **Hev Pointer seed 0** | 0 (0%) | 0 (0%) | `1.33e-6` |
+| **Hev Pointer seed 1** | 0 (0%) | 0 (0%) | below the `1e-4` mechanism tolerance |
+| kev-0.6b released, seed 0 | 43 (6.85%) | 87 (25.00%) | 0.1334 |
 
-The protocols differ and must not be ranked as identical experiments. Hev's exhaustive result verifies its implementation and architectural claim. Zero observed Jev transfer flips do not establish architectural invariance.
+kev's largest single-question correct-probability spread across the six orders was 0.8988 on decision, and its transfer p90 spread was 0.3139.
+
+Two qualifications matter. First, protocol choice changes the measurement: kev's own clean-versus-one-permutation protocol on this same checkpoint reported a 1.67% decision flip rate over 60 cases, roughly a quarter of the exhaustive figure, so any table that places six-order results beside one-permutation results is not like-for-like. Earlier versions of this card did exactly that and the figures it quoted for kev and Jev understate flips. Second, exact order invariance is **not unique to Hev**: kev now has its own `option_isolation` flag and measured a 0.0 flip rate with it at 0.6B, at a cost by its own controlled measurement of roughly half a point of decision accuracy and 1.7 points of transfer accuracy. The kev checkpoint evaluated here ran with `option_isolation` false.
+
+Exact order invariance is not shown to improve accuracy.
 
 ## Limitations
 
 - **No locked-test result.** Every headline number is development-only.
-- **Transfer gap.** Hev trails Jev substantially out of source. MMLU and held-out deadline are major weaknesses.
+- **Behind the released kev on the fair v4 population.** Hev is 1.63 points behind `kev-0.6b` on decision at seed 0, with an interval that crosses zero, and 3.85 points behind at seed 1, with an interval that excludes zero. Neither seed reaches the predeclared equivalence bar.
+- **The kev comparison is confounded by training data.** kev trained on roughly three times as many records, on a newer suite, with none-of-the-above minimal pairs and on different hardware and precision. No observed difference may be attributed to architecture.
+- **Exact order invariance is not unique to this model.** kev implements its own `option_isolation` and has measured a 0.0 flip rate with it at 0.6B. Invariance is a property of the mask, not evidence of better accuracy.
+- **One kev checkpoint only.** Only kev's published seed-0 checkpoint can be re-scored. Its other two seeds are point-only figures from kev's own evaluator with no per-example rows, so they can never enter a paired interval.
+- **Policy and compositional structures are untrained.** Hev has never seen the v4 policy arms. Results there are descriptive and carry no verdict.
+- **Seed variance is material.** Two seeds of one recipe span 79.71% and 77.50% on primary v4 decision accuracy and 0.0221 and 0.0492 on calibrated ECE. Differences smaller than that span are not meaningful.
+- **Transfer gap.** Out-of-source accuracy is 64.38% and 63.96% on the public v4 transfer sources.
 - **Small backbone.** Factual knowledge, arithmetic and multi-step reasoning are limited.
 - **Narrow supervision.** English classification datasets and deterministic policies do not cover arbitrary business workflows.
 - **Pointer bottleneck.** Options are scored independently. Comparative reasoning can be difficult, especially for close or high-cardinality choices.
 - **Ordinal learning is weak.** The Score level embedding changes probabilities but has no supported NLL improvement; the ranked-probability loss was disabled.
-- **Calibration is local.** A fitted temperature on decision-v2 does not guarantee calibrated transfer or deployment probabilities.
+- **Calibration is local.** A temperature fitted on one calibration split does not guarantee calibrated transfer or deployment probabilities.
 - **Score confidence is a stand-in.** TypeSafe's exact formula is unpublished.
 - **No mobile claim.** PyTorch/Transformers inference is tested on Apple Silicon, not iPhone or Core ML.
 - **No production hardening.** The server has no authentication, permissive CORS and single-process local serving semantics.
@@ -227,13 +260,13 @@ The model inherits biases and label noise from Qwen3 and every training dataset,
 
 Direct probabilities can appear more authoritative than generated prose. A value such as `0.92` is the model's mass on one supplied option after temperature scaling, not proof that the answer is correct. Measure calibration on representative labelled outcomes before applying thresholds.
 
-Option isolation prevents one option from changing a sibling option's backbone state. It does not prevent misleading state text, ambiguous criteria, data leakage, distribution shift or prompt injection through allowed content.
+Option isolation prevents one option from changing a sibling option's backbone state. It does not prevent misleading state text, ambiguous criteria, data leakage, distribution shift or prompt injection through allowed content, and it has not been shown to improve accuracy.
 
 Use human review for consequential decisions. Log model version, full criteria and distributions. Provide abstention and rollback paths.
 
 ## Environmental Impact
 
-Each local training run took 19–22 minutes on one Apple M4 Max. Energy consumption was not measured. Evaluation and the hosted Jev comparison are documented in the immutable ledgers.
+Each local training run took 19–22 minutes on one Apple M4 Max. Energy consumption was not measured. Evaluation runs, the hosted Jev comparison and the M4 re-scoring of the released kev checkpoint are documented in the immutable ledgers.
 
 ## Citation
 

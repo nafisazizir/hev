@@ -125,3 +125,23 @@ Both models' training rows were checked against every M4 evaluation split, by ex
 Neither model has seen any headline evaluation row. The single decision-v4 calibration state shared with Hev's training data affects only temperature fitting, a one-parameter fit, and is recorded rather than excluded so the two models keep an identical calibration population.
 
 The two training sets share 1,303 states, as expected from the common public pools. That is a fairness note, not contamination: both models trained on overlapping public material and kev trained on roughly three times as many records. It is one more reason M4 step 1 cannot attribute any difference to architecture.
+
+### D13 addendum: the artifact paths that were actually used  (2026-09-20)
+
+D13 predeclared the output directories `runs/m4-kev-0.6b-v4` and `runs/m4-released-v4`. Runs are immutable and failures are kept, so two code faults moved the authoritative artifacts to retry paths. The kev evaluation is `runs/m4-kev-0.6b-v4-r1` and the aggregate is `runs/m4-released-v4-r2`. Cite those.
+
+`runs/m4-released-v4` stopped because the aggregate validated each run's training suite hash rather than the suite actually evaluated, which a cross-suite Hev run correctly reports as decision-v2. `runs/m4-released-v4-r1` stopped because the evaluator did not record the scored kev checkpoint's architecture flags, so the artifact could not demonstrate that kev ran with `option_isolation` false; since the order-sensitivity result is only interpretable against the packing that produced it, the evaluator was fixed and the kev evaluation repeated. The repeat reproduced `runs/m4-kev-0.6b-v4` exactly, including every permutation statistic, and the original is retained. Neither fault touched a model or a datum; no predeclared rule, margin or population was changed after seeing any result.
+
+## D14. M4 outcome: kev leads on the fair population, and exact order invariance is no longer unique  (2026-09-20)
+
+M4 step 1 ran under D13 without amendment. The predictor sanity gate passed at exactly zero difference on both suites, which validates the vendored kev inference path. [Aggregate](../runs/m4-released-v4-r2/result.json)
+
+On the primary public-source population, kev led Hev seed 0 by 1.63 points on decision with a 95% interval of −0.38 to +3.75, and seed 1 by 3.85 points with an interval of +1.73 to +5.96. Under the predeclared rules seed 0 is inconclusive and seed 1 is a kev win. Transfer was inconclusive for both seeds. No result met the equivalence criterion, because no 90% interval fell entirely inside its margin. Record this as kev ahead on decision and undecided on transfer, not as parity.
+
+The comparison is confounded. kev trained on roughly three times as many records with an augmentation Hev does not implement. Do not cite any M4 number as evidence about option isolation.
+
+**Two framings in the repository were wrong and are now corrected.** First, Hev's order-invariance claim implied uniqueness; kev at HEAD has its own `option_isolation` flag and measured it at 0.6B on these suites, so the mechanism is independently implemented and, by kev's controlled measurement, costs about half a point on decision and 1.7 points on transfer. Second, the M3 table compared Hev's exhaustive six-order study against kev's and Jev's single-permutation studies. Measured on one checkpoint, the single-permutation protocol reports 1.67% where six orders report 6.85%. Never place flip rates from different numbers of orders in one table again.
+
+**Implications for the next milestone.** Step 2 should retrain PointerHead on decision-v4 with kev's recipe across three seeds to remove the data confound, and should not retrain SetHead. Expect it to confirm that isolation is roughly accuracy-neutral on decision and slightly costly on transfer rather than to overturn kev's finding. Its value is removing a confound from Hev's own published table and testing a genuinely different isolation design, not a decisive verdict on the mechanism.
+
+Hev seed 1 is materially weaker than seed 0 on the primary decision population, 77.50% against 79.71%. Two seeds cannot separate that from training noise. Step 2's three seeds should be reported as a mean with a range, and no seed may be selected on accuracy.

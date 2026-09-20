@@ -203,7 +203,8 @@ class FakeKevPredictor:
         self.reference, self.device = reference, device
         self.metadata = {"base": BASE, "base_revision": REVISION, "suite_sha256": FakeKevPredictor.suite_sha256,
                          "checkpoint": {"repo": reference, "revision": "abc"}, "kev_source": {"commit": "20fa626"},
-                         "training_args": {"seed": 0, "lr": 2e-4}}
+                         "training_args": {"seed": 0, "lr": 2e-4},
+                         "option_isolation": False, "special_embeddings": False, "head_dim": 256, "lora": 16}
         FakeKevPredictor.instances.append(self)
 
     def __call__(self, request):
@@ -248,6 +249,12 @@ def test_kev_evaluates_through_kev_predictor_and_records_provenance(tmp_path, su
         "checkpoint": {"repo": reference, "revision": "abc"},
         "kev_source": {"commit": "20fa626"},
         "training_args": {"seed": 0, "lr": 2e-4},
+        # An order-sensitivity number is only interpretable against the packing that produced it,
+        # so the scored checkpoint's architecture flags must survive into the artifact.
+        "option_isolation": False,
+        "special_embeddings": False,
+        "head_dim": 256,
+        "lora": 16,
     }
     assert result["training_suite_sha256"] == digest(decision / "manifest.json")
     assert result["decision"]["coverage"]["evaluated_questions"] == 2

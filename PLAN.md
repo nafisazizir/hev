@@ -62,16 +62,20 @@ Predeclared replication protocol (2026-09-20, before the run): train PointerHead
 - [x] Replicate PointerHead with predeclared seed 1. Report both seeds, never only the better one. [Aggregate](runs/m3-pointer-replication-v2/result.json)
 - [x] Direct TypeSafe evaluation of `jev-1.13.0` on decision-v2 calibration/development and transfer-v2 development, followed by a comprehensive Hev / kev / Jev aggregate. [Three-way result](runs/m3-three-way-v2-r1/result.json)
 
-### M4. Released kev-0.6b on v4 development  (predeclared 2026-09-20, in progress)
+### M4. Released kev-0.6b on v4 development  (done 2026-09-20)
 
 Step 1 of the controlled comparison: evaluation only, no training. Protocol fixed in [D13](docs/DECISIONS.md). kev at HEAD 20fa626 ships its own `option_isolation` flag and a published 0.6B preview trained on decision-v4, so the earlier framing that only Hev has exact order invariance is out of date; see [docs/KEV.md](docs/KEV.md).
 
-- [ ] Copy `decision-v4` and `transfer-v4` byte-for-byte from kev 20fa626 (`evals/`), development-only.
-- [ ] Vendored kev inference path (`hev/kev_model.py`) and `KevPredictor` (`hev/kev.py`) so a kev checkpoint runs under kev's exact packing through Hev's evaluator.
-- [ ] Evaluator seams: `--out`, `--checkpoint-kind kev`, `--allow-cross-suite`, each recorded in `result.json`; transfer-v4 holdout sources accepted as eval-only.
-- [ ] Evaluate released kev-0.6b, Hev seed 0, Hev seed 1 on decision-v4 and transfer-v4 development; predictor sanity gate against kev's own numbers.
-- [ ] Paired aggregate with predeclared equivalence margins (`runs/m4-released-v4`), primary population = public sources.
-- [ ] RESULTS.md, README results table, KEV.md, model card updated with artifact links.
+Exit met by the immutable [aggregate](runs/m4-released-v4-r2/result.json). The predictor sanity gate passed at exactly zero difference: re-scoring the released checkpoint reproduced kev's own published development accuracy, 0.8045886076 over 1,264 decision rows and 0.5975609756 over 656 transfer rows. On the primary public-source population kev led Hev seed 0 by 1.63 points on decision with a 95% interval of -0.38 to +3.75 (inconclusive) and seed 1 by 3.85 points with an interval of +1.73 to +5.96 (kev better). Transfer was inconclusive for both seeds. Under the exhaustive six-order protocol the released kev flipped 6.85% of 628 decision questions and 25.00% of 348 transfer questions, while both Hev seeds flipped none. kev's own one-permutation protocol reported 1.67% on the same checkpoint, so that cheaper protocol understates flips roughly fourfold. Full tables: [docs/RESULTS.md](docs/RESULTS.md).
+
+- [x] Copy `decision-v4` and `transfer-v4` byte-for-byte from kev 20fa626 (`evals/`), development-only.
+- [x] Vendored kev inference path (`hev/kev_model.py`) and `KevPredictor` (`hev/kev.py`) so a kev checkpoint runs under kev's exact packing through Hev's evaluator.
+- [x] Evaluator seams: `--out`, `--checkpoint-kind kev`, `--allow-cross-suite`, each recorded in `result.json`; transfer-v4 holdout sources accepted as eval-only.
+- [x] Evaluate released kev-0.6b, Hev seed 0, Hev seed 1 on decision-v4 and transfer-v4 development; predictor sanity gate against kev's own numbers. [kev](runs/m4-kev-0.6b-v4-r1/result.json), [seed 0](runs/m4-hev-pointer-s0-v4/result.json), [seed 1](runs/m4-hev-pointer-s1-v4/result.json)
+- [x] Paired aggregate with predeclared equivalence margins, primary population = public sources. [Aggregate](runs/m4-released-v4-r2/result.json)
+- [x] RESULTS.md, README results table, KEV.md, model card updated with artifact links.
+
+Two earlier aggregate attempts are retained as failures and must never be reused. `runs/m4-released-v4` stopped because the aggregate validated each run's training suite hash instead of the suite actually evaluated, which a cross-suite Hev run correctly reports as decision-v2. `runs/m4-released-v4-r1` stopped because the evaluator did not record the scored kev checkpoint's architecture flags, so the artifact could not show that kev ran with `option_isolation` false. Both were code faults, not model results. The kev evaluation was then repeated as `runs/m4-kev-0.6b-v4-r1` with the flags recorded; it reproduced `runs/m4-kev-0.6b-v4` exactly, including every permutation statistic, and the first kev run is retained.
 
 Step 2 (separate milestone, not started): retrain Hev on decision-v4 with kev's v4 recipe, three seeds, so the comparison controls training data.
 
