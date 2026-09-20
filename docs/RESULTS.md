@@ -1,5 +1,24 @@
 # Results
 
+## M3: PointerHead replication  (2026-09-20)
+
+M3 repeated the selected PointerHead with predeclared training seed 1 and the unchanged M2 recipe, then evaluated the same decision-v2 and transfer-v2 development populations. The locked test split was not accessed. The authoritative artifacts are the [seed-1 result](../runs/m3-pointer-s1/result.json) and [two-seed aggregate](../runs/m3-pointer-replication-v2/result.json).
+
+| Metric | Seed 0 | Seed 1 | Two-seed mean (range) |
+|---|---:|---:|---:|
+| Decision accuracy | 80.67% | 79.33% | 80.00% (79.33–80.67) |
+| Transfer accuracy | 61.07% | 60.36% | 60.71% (60.36–61.07) |
+| Decision calibrated ECE | 0.0148 | 0.0256 | 0.0202 (0.0148–0.0256) |
+| Decision calibrated Brier | 0.2636 | 0.2754 | 0.2695 (0.2636–0.2754) |
+
+The paired source-stratified, record-clustered seed-1-minus-seed-0 accuracy difference was −1.33 percentage points on decision-v2 (95% CI −3.08 to +0.42) and −0.71 points on transfer-v2 (−3.39 to +1.96). These are descriptive intervals over examples, not estimates from a population of two training seeds. They do not support selecting the better seed or a claim that seed 1 is less accurate. [Paired artifact](../runs/m3-pointer-replication-v2/result.json)
+
+Seed 1 had zero Choice argmax flips on both suites. Its p90 correct-probability spread was `1.45e-6` on decision-v2 and `2.86e-6` on transfer-v2; its packed-vs-separate maximum was `6.38e-6` on decision-v2, while transfer records are single-question. All were below the predeclared `1e-4` mechanism tolerance, and coverage was complete. [Seed-1 diagnostics](../runs/m3-pointer-s1/result.json)
+
+The first aggregate attempt correctly stopped because `evaluate.py` had changed after seed 0. Audit showed that the sole difference adds `evaluation_config` fields to `result.json` after predictions and metrics are computed. The final aggregate accepts exactly the recorded old and new hashes, preserves that exception in provenance, and still requires identical `data.py`, `model.py`, `suite.py`, and `train.py` hashes. [Provenance record](../runs/m3-pointer-replication-v2/result.json)
+
+M3 therefore strengthens the development-only result: PointerHead's accuracy and exact-by-construction order behavior reproduced under a second training seed. It does not convert the result into a locked-test claim or a broad estimate of training-seed variance.
+
 ## M2: first real comparison  (2026-09-20)
 
 M2 trained exactly the two predeclared seed-0 models on decision-v2 and evaluated them on clean decision-v2 and transfer-v2 development rows. Temperature scaling was fit only on decision-v2 calibration and transferred unchanged. The locked test split was not accessed. The authoritative aggregate artifact is [`runs/m2-comparison-s0/result.json`](../runs/m2-comparison-s0/result.json); the full PointerHead and SetHead ledgers are [`runs/m2-pointer-s0/result.json`](../runs/m2-pointer-s0/result.json) and [`runs/m2-set-s0/result.json`](../runs/m2-set-s0/result.json).

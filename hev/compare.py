@@ -36,7 +36,7 @@ def load_json(path):
     return json.loads(Path(path).read_text())
 
 
-def load_hev_run(path, expected_head):
+def load_hev_run(path, expected_head, expected_seed=0):
     path = Path(path)
     result_path = path / "result.json"
     result = load_json(result_path)
@@ -45,8 +45,9 @@ def load_hev_run(path, expected_head):
     if result.get("head") != expected_head:
         raise ValueError(f"expected {expected_head} result, got {result.get('head')}")
     args = result["training_config"]["args"]
-    if args.get("head") != expected_head or any(args.get(key) != value for key, value in M2_RECIPE.items()):
-        raise ValueError("run does not match the predeclared M2 recipe")
+    recipe = {**M2_RECIPE, "seed": expected_seed}
+    if args.get("head") != expected_head or any(args.get(key) != value for key, value in recipe.items()):
+        raise ValueError("run does not match the predeclared recipe")
     training = result["training_metrics"]
     if (training.get("status"), training.get("records_seen"), training.get("requested_records"), training.get("optimizer_steps")) != (
         "success", 6864, 6864, 858

@@ -66,6 +66,15 @@ uv run python -m hev.compare \
   --seed 20260919
 ```
 
+M3 commands (completed 2026-09-20; output paths are immutable and must not be reused):
+
+```bash
+uv run python -m hev.train --suite evals/decision-v2 --out runs/m3-pointer-s1 --head pointer --device mps --seed 1 --epochs 2 --lr 2e-4 --lora 16 --batch 1 --accum 8 --ord-w 0 --p-none 0.1 --p-none-distract 0.12 --p-distract 0.15 --require-loss-decrease
+uv run python -m hev.evaluate --run runs/m3-pointer-s1 --suite evals/decision-v2 --transfer evals/transfer-v2 --device mps --seed 1 --permutations 6 --bootstrap-samples 10000
+uv run python -m hev.replicate --seed0 runs/m2-pointer-s0 --seed1 runs/m3-pointer-s1 --out runs/m3-pointer-replication-v2 --bootstrap-samples 10000 --seed 20260920
+uv run --extra serve python -m hev.serve --run runs/m3-pointer-s1 --port 8008
+```
+
 Hardware: Apple M4 Max, 36 GB. The pinned Qwen3-0.6B-Base tokenizer and model are cached from M1.
 
 ## Where things are
@@ -73,7 +82,7 @@ Hardware: Apple M4 Max, 36 GB. The pinned Qwen3-0.6B-Base tokenizer and model ar
 | Need | Look at |
 |---|---|
 | Roadmap and current milestone | PLAN.md |
-| M2 results and conclusions | docs/RESULTS.md, runs/m2-comparison-s0/result.json |
+| M2/M3 results and conclusions | docs/RESULTS.md, runs/m2-comparison-s0/result.json, runs/m3-pointer-replication-v2/result.json |
 | Mask rule, positions, heads, invariance argument | docs/DESIGN.md |
 | Illustrated walkthrough for newcomers (open in a browser) | docs/explainer.html |
 | Why each choice was made, alternatives rejected | docs/DECISIONS.md |

@@ -12,7 +12,7 @@ Full design: [docs/DESIGN.md](docs/DESIGN.md). Illustrated walkthrough with the 
 
 ## Status
 
-M2 complete. On the predeclared seed-0 development comparison, PointerHead reached 80.67% on decision-v2 and 61.07% on transfer-v2, versus kev seed 0 at 81.58% and 61.96%. It had zero Choice argmax flips across six evaluated orders on both suites, with p90 probability spreads below `3e-6`. SetHead reached 80.92% and 60.71%, but its paired decision improvement over PointerHead was only 0.25 points with a 95% CI crossing zero. H1 and H3 are supported; H2 is inconclusive/not needed; the D6 fallback is not triggered. [Full results and limitations](docs/RESULTS.md), [aggregate artifact](runs/m2-comparison-s0/result.json).
+M3 complete. PointerHead averaged 80.00% on decision-v2 and 60.71% on transfer-v2 across predeclared training seeds 0 and 1. Both seeds had zero Choice argmax flips and passed every order, packing, and coverage check; the seed-1-minus-seed-0 accuracy intervals crossed zero on both suites. A calibrated TypeSafe-compatible FastAPI server now exposes `POST /v1/systemone` and `GET /v1/models`. The results remain development-only. [Full results and limitations](docs/RESULTS.md), [two-seed artifact](runs/m3-pointer-replication-v2/result.json).
 
 ## Layout
 
@@ -22,6 +22,8 @@ hev/model.py     packing, block mask, PointerHead / SetHead, DecisionModel
 hev/data.py      labelled request -> internal record; augmentation ported from kev
 hev/suite.py     checksummed frozen-suite loader; locked test split
 hev/compare.py   M2 artifact validation, paired bootstrap, predeclared decisions
+hev/replicate.py M3 two-seed validation and descriptive aggregate
+hev/serve.py     calibrated TypeSafe-compatible FastAPI server
 evals/           frozen suites copied from kev (see evals/README.md for provenance)
 tests/           offline tests: fake tokenizer + tiny random Qwen2 backbone
 docs/            DESIGN, DECISIONS, RESULTS, KEV, EVALS
@@ -48,6 +50,14 @@ uv run python -m hev.evaluate --run runs/smoke-set-s0 --suite evals/smoke-v1 --d
 ```
 
 Run directories and evaluation artifacts are immutable. Choose new `--out` paths for reruns; failed artifacts are preserved.
+
+Serve an evaluated checkpoint with its calibration-only fitted temperature:
+
+```bash
+uv run --extra serve python -m hev.serve --run runs/m3-pointer-s1 --port 8008
+```
+
+The official TypeSafe SDK and kev playground can use `http://127.0.0.1:8008` as their base URL and `hev-latest` as the model.
 
 ## Comparing against kev and Jev
 

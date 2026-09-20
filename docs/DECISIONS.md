@@ -75,3 +75,9 @@ M2 supports H1 and H3 under D9. H2 is inconclusive/not needed because PointerHea
 Use PointerHead as the default for M3 serving and second-seed replication. It is the simpler readout, passed all H1 checks, and SetHead supplied no supported accuracy gain. Retain SetHead as a research alternative rather than claiming it is worse. [Results](RESULTS.md), [decision artifact](../runs/m2-comparison-s0/result.json)
 
 Do not build the D6 shortlist fallback: both heads remained above its banking77 threshold. Keep the existing Score level embedding in the M2 checkpoint, but do not claim it is beneficial; the ablation shows that it changes probabilities without a statistically supported NLL improvement. [Pointer ablation](../runs/m2-pointer-s0/result.json), [D6 outcome](../runs/m2-comparison-s0/result.json)
+
+## D11. Keep PointerHead as the served default after replication  (2026-09-20)
+
+The predeclared seed-1 replication reached 79.33% decision-v2 and 60.36% transfer-v2 accuracy, versus 80.67% and 61.07% for seed 0. Both paired accuracy intervals crossed zero, and both seeds passed every order, packing, and coverage check. Keep PointerHead as the default and report the two-seed mean and range rather than selecting seed 0 as the headline model. [Replication aggregate](../runs/m3-pointer-replication-v2/result.json)
+
+Serving applies each run's calibration-only fitted temperature and exposes the TypeSafe-compatible `/v1/systemone` and `/v1/models` shapes. A live Jev comparison remains optional and must not be implied without an explicit AI Gateway run artifact.

@@ -42,13 +42,17 @@ Exit met by the immutable [PointerHead result](runs/m2-pointer-s0/result.json), 
 - [x] Write immutable result ledgers and summarise them in [docs/RESULTS.md](docs/RESULTS.md).
 - [x] Decide H1/H2/H3 and D6 under the predeclared rules. H1 supported; H2 inconclusive/not needed; H3 supported for both heads; D6 not triggered. [Decision artifact](runs/m2-comparison-s0/result.json)
 
-### M3. Serve and compare with Jev
+### M3. Serve and replicate PointerHead  (done 2026-09-20)
+
+Exit met by the TypeSafe-compatible server and the immutable [seed-1 result](runs/m3-pointer-s1/result.json) plus [two-seed aggregate](runs/m3-pointer-replication-v2/result.json). PointerHead averaged 80.00% decision-v2 accuracy and 60.71% transfer-v2 accuracy across seeds 0 and 1; both seeds passed every isolation/order mechanism check. Seed 1 minus seed 0 was −1.33 points on decision-v2 (paired 95% CI −3.08 to +0.42) and −0.71 points on transfer-v2 (−3.39 to +1.96), so the observed accuracy difference is not distinguishable from zero under the predeclared descriptive comparison. [Full results](docs/RESULTS.md)
 
 PointerHead is the default selected by M2: it is simpler than SetHead, retained near-kev accuracy, and SetHead showed no supported gain. [M2 evidence](runs/m2-comparison-s0/result.json)
 
-- [ ] `hev/serve.py`: FastAPI `POST /v1/systemone` plus `/v1/models`, same shapes as kev so the TypeSafe SDK and kev's playground work with a base_url change.
-- [ ] Port kev's Jev client if a live three-way comparison is wanted (needs a TypeSafe key via AI Gateway; kev/jev.py).
-- [ ] Replicate PointerHead with a second predeclared seed. Report both seeds, never only the better one.
+Predeclared replication protocol (2026-09-20, before the run): train PointerHead with seed 1 and the exact M2 recipe (2 epochs, r=16, lr 2e-4, effective batch 8, Qwen3-0.6B-Base at the suite-pinned revision, and the same augmentation probabilities). Evaluate decision-v2 and transfer-v2 development with evaluation seed 1, six permutations, 10,000 bootstrap draws, and no test access. The immutable model path is `runs/m3-pointer-s1`. The aggregate reports seed 0 and seed 1 separately, their arithmetic mean and range, and paired seed-1-minus-seed-0 intervals as descriptive variability. Replication mechanism checks are complete coverage, zero Choice argmax flips, p90 probability spread at most `1e-4`, and packed-vs-separate maximum difference at most `1e-4`; there is no accuracy-based seed-selection rule. The first aggregate attempt was retained as a failure because `evaluate.py` gained result-protocol metadata after seed 0. The successful `runs/m3-pointer-replication-v2` artifact admits only the two audited hashes, records that exception, and verifies identical model, data, suite, and training source hashes.
+
+- [x] `hev/serve.py`: FastAPI `POST /v1/systemone` plus `/v1/models`, same shapes as kev so the TypeSafe SDK and kev's playground work with a base_url change.
+- [x] Replicate PointerHead with predeclared seed 1. Report both seeds, never only the better one. [Aggregate](runs/m3-pointer-replication-v2/result.json)
+- [ ] Optional: port and run kev's Jev client for a live three-way comparison only when a TypeSafe key is deliberately provided via AI Gateway; this is not required for the M3 exit criterion.
 
 ### M4. Beyond the first result (pick after M2)
 

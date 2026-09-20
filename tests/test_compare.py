@@ -88,3 +88,25 @@ def test_load_hev_run_verifies_recipe_row_hashes_and_counts(tmp_path):
     (run / "decision_rows.json").write_text("[]\n")
     with pytest.raises(ValueError, match="hash mismatch"):
         load_hev_run(run, "pointer")
+
+
+def test_load_hev_run_seed1_recipe_accepted_only_with_expected_seed(tmp_path):
+    run = tmp_path / "pointer-s1"
+    run.mkdir()
+    for name in ("decision", "transfer"):
+        write_json(run / f"{name}_rows.json", [{"name": name}])
+    artifacts = {
+        name: {"path": f"{name}_rows.json", "sha256": digest(run / f"{name}_rows.json"), "rows": 1}
+        for name in ("decision", "transfer")
+    }
+    write_json(run / "result.json", {
+        "status": "success",
+        "test_evaluated": False,
+        "head": "pointer",
+        "training_config": {"args": {**M2_RECIPE, "head": "pointer", "seed": 1}},
+        "training_metrics": {"status": "success", "records_seen": 6864, "requested_records": 6864, "optimizer_steps": 858},
+        "artifact_hashes": artifacts,
+    })
+    assert load_hev_run(run, "pointer", expected_seed=1)["rows"]["transfer"] == [{"name": "transfer"}]
+    with pytest.raises(ValueError, match="predeclared recipe"):
+        load_hev_run(run, "pointer")

@@ -769,6 +769,12 @@ def evaluate(args):
             "training_config": training_config,
             "training_metrics": training_metrics,
             "evaluation_source_hashes": current_sources,
+            "evaluation_config": {
+                "seed": args.seed,
+                "permutations": args.permutations,
+                "bootstrap_samples": args.bootstrap_samples,
+                "level_zero_ablation": args.level_zero_ablation,
+            },
             "temperature_fit": temperature_fit,
             "decision": decision,
             "transfer": transfer,

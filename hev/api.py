@@ -125,3 +125,9 @@ def to_answers(probs: list[list[float]], meta: list[dict]) -> dict[str, Any]:
             out[m["id"]] = {"type": "score", "score": r2(score), "legend": m["legend"],
                             "probabilities": {str(i): r2(v) for i, v in enumerate(p)}, "confidence": r2(score_confidence(p))}
     return out
+
+
+def output_tokens(tok, answers: dict) -> int:
+    """Billing-style count of serialized answer tokens; the model still performs no decoding."""
+    import json
+    return len(tok(json.dumps(answers), add_special_tokens=False).input_ids)

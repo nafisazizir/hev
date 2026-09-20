@@ -18,7 +18,7 @@ kev is a LoRA adapter (r=16) plus a 256-dim pointer head on Qwen 0.5B/0.6B. A re
 | `kev/evaluate.py` | accuracy/ECE/permutation/IIA/isolation/latency studies | Metric functions ported at M1; at M2 the clean/variant row and metric summaries are adapted into `hev/evaluate.py` with attribution. Model inference and orchestration remain hev-specific. |
 | `kev/benchmark.py`, `kev/compare.py`, `kev/plot.py` | bootstrap CIs, kev-vs-jev comparison, figures | Grouped bootstrap logic adapted into `hev/evaluate.py`/`hev/compare.py` at M2 with attribution. Kev v2 aggregate result artifacts lack per-example rows, so kev seed-0/seed-1 numbers enter only as hash-verified point baselines; no paired hev-vs-kev CI is possible. Plotting not ported. |
 | `kev/jev.py` | client for TypeSafe's Jev via AI Gateway | Port at M3 if a live Jev comparison is wanted. |
-| `kev/serve.py` | FastAPI `/v1/systemone`, `/permute`, `/separate` | M3 writes hev's own with the same routes. |
+| `kev/serve.py` | FastAPI `/v1/systemone`, `/permute`, `/separate` | M3 writes hev's own `/v1/systemone` and `/v1/models` compatibility routes; playground-only probe routes are not ported. |
 | `kev/experiment.py`, `modal_app.py` | config-only trial runner, Modal H100 | Port if MPS becomes the bottleneck. |
 | `kev/composition.py`, `kev/study_v3.py`, `kev/contrastive.py` | synthetic compositional policy data, v3 study | Not needed until M4. |
 | `playground/` | Next.js UI with isolation/forgery probes and chess | Works against hev unchanged once M3 serve exists. |
