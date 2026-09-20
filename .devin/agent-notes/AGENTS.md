@@ -94,6 +94,25 @@ uv run python -m hev.three_way \
 
 The M3 Jev and three-way output directories above are immutable and must not be reused. Failed attempts retained under `runs/m3-jev-calibration-v2`, `runs/m3-jev-direct-calibration-v2`, and `runs/m3-three-way-v2` must also not be reused.
 
+M4b commands (started 2026-09-20; output paths are immutable and must not be reused). Seed 0 trains as `-s0-r1` because the predeclared `runs/m4b-pointer-v4-s0` is a killed-launch stub (D15 addendum). `evals/decision-v4/train.jsonl` is git-ignored; `hev.train` fetches it from the pinned Hub mirror on first use.
+
+```bash
+for s in 0 1 2; do out=runs/m4b-pointer-v4-s$s; [ $s = 0 ] && out=runs/m4b-pointer-v4-s0-r1
+uv run python -m hev.train --suite evals/decision-v4 --out $out --head pointer --device mps --seed $s --epochs 2 --lr 2e-4 --lora 16 --batch 1 --accum 8 --ord-w 0 --p-none 0.1 --p-none-distract 0.12 --p-distract 0.15 --p-none-pair 0.25 --objective-records 1024 --recipe kev-v4 --require-loss-decrease
+uv run python -m hev.evaluate --run $out --suite evals/decision-v4 --transfer evals/transfer-v4 --out runs/m4b-eval-v4-s$s --device mps --seed 1 --permutations 6 --bootstrap-samples 10000
+done
+
+uv run python -m hev.controlled \
+  --kev runs/m4-kev-0.6b-v4-r1 \
+  --hev-seed0 runs/m4b-eval-v4-s0 --hev-seed1 runs/m4b-eval-v4-s1 --hev-seed2 runs/m4b-eval-v4-s2 \
+  --kev-hub-result /Users/nafis/.cache/huggingface/hub/models--jaredpalmer--kev-0.6b/snapshots/83e05fabf7ef08e343bb4daf144e08777f99713d/result.json \
+  --kev-seed1 /Users/nafis/Documents/personal/kev/runs/v4-06b-hardened/01-trial-1/result.json \
+  --kev-seed2 /Users/nafis/Documents/personal/kev/runs/v4-06b-hardened/02-trial-2/result.json \
+  --out runs/m4b-v4-three-seed --bootstrap-samples 10000 --seed 20260920
+```
+
+**Do not touch `hev/*.py`, `pyproject.toml` or `uv.lock` while a training or evaluation run is live.** `hev.suite.source_hashes` globs the package, the trainer's final provenance gate fails if any hash changed since its start, and `hev.evaluate` refuses a checkpoint whose recorded hashes differ from the current tree unless `--allow-cross-suite`. Develop in a git worktree and merge after the runs finish; that is how `hev/controlled.py` was added during M4b.
+
 Hardware: Apple M4 Max, 36 GB. The pinned Qwen3-0.6B-Base tokenizer and model are cached from M1.
 
 ## Where things are

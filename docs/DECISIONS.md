@@ -172,3 +172,7 @@ Hev seed 1 is materially weaker than seed 0 on the primary decision population, 
 **Mechanism checks.** Every seed: complete coverage, zero Choice argmax flips, p90 correct-probability spread at most 1e-4, packed-versus-separate maximum difference at most 1e-4. Failure is a bug, not a result.
 
 **What may be claimed.** With the training partition, recipe and augmentation held equal, the accuracy, calibration and order behaviour of Hev's isolating encoding against the released kev checkpoint on identical items. **What may not.** That any remaining difference is caused by the encoding alone, since precision and hardware still differ; anything about the locked test; anything about Jev; any seed selection.
+
+### D15 addendum: the artifact paths that were actually used  (2026-09-20)
+
+D15 predeclared `runs/m4b-pointer-v4-s0`. That directory exists and holds only `training_config.json` (status `configured`, written 16:08, the minute the D15 code was committed) with no `training_metrics.json` and no `failure.json`: the first launch was killed from outside before its first optimizer step, so no model and no gate were ever involved. Runs are immutable and failures are kept, so the stub stays and seed 0 was trained as `runs/m4b-pointer-v4-s0-r1` with the identical command. Seeds 1 and 2 kept their predeclared paths. The evaluation and aggregate paths are unchanged: `runs/m4b-eval-v4-s0/-s1/-s2` and `runs/m4b-v4-three-seed`. Cite `-s0-r1` for seed 0.
