@@ -44,7 +44,9 @@ Exit met by the immutable [PointerHead result](runs/m2-pointer-s0/result.json), 
 
 ### M3. Serve and replicate PointerHead  (done 2026-09-20)
 
-Exit met by the TypeSafe-compatible server and the immutable [seed-1 result](runs/m3-pointer-s1/result.json) plus [two-seed aggregate](runs/m3-pointer-replication-v2/result.json). PointerHead averaged 80.00% decision-v2 accuracy and 60.71% transfer-v2 accuracy across seeds 0 and 1; both seeds passed every isolation/order mechanism check. Seed 1 minus seed 0 was −1.33 points on decision-v2 (paired 95% CI −3.08 to +0.42) and −0.71 points on transfer-v2 (−3.39 to +1.96), so the observed accuracy difference is not distinguishable from zero under the predeclared descriptive comparison. [Full results](docs/RESULTS.md)
+Exit met by the TypeSafe-compatible server and the immutable [seed-1 result](runs/m3-pointer-s1/result.json) plus [two-seed aggregate](runs/m3-pointer-replication-v2/result.json). PointerHead averaged 80.00% decision-v2 accuracy and 60.71% transfer-v2 accuracy across seeds 0 and 1; both seeds passed every isolation/order mechanism check. Seed 1 minus seed 0 was −1.33 points on decision-v2 (paired 95% CI −3.08 to +0.42) and −0.71 points on transfer-v2 (−3.39 to +1.96), so the observed accuracy difference is not distinguishable from zero under the predeclared descriptive comparison. [Replication results](docs/RESULTS.md)
+
+The optional live comparison is also complete against a direct TypeSafe snapshot resolving to `jev-1.13.0`. On the same development populations, two-seed means were Hev 80.00% / 60.71%, kev 80.46% / 62.05%, and Jev 83.50% / 85.36% for decision-v2 / transfer-v2. Paired Jev-minus-Hev accuracy intervals excluded zero for each Hev seed; kev remains point-only because its checked-in v2 artifacts have no rows. Hev alone had zero flips in its exhaustive six-order mechanism study; the smaller common clean-versus-one-permutation variant observed 4.17–5.56% kev decision flips and 1.39% Jev decision flips. Jev NLL is floor-sensitive because its API rounds probabilities to zero. [Comprehensive three-way artifact](runs/m3-three-way-v2-r1/result.json) and [interpretation](docs/RESULTS.md)
 
 PointerHead is the default selected by M2: it is simpler than SetHead, retained near-kev accuracy, and SetHead showed no supported gain. [M2 evidence](runs/m2-comparison-s0/result.json)
 
@@ -52,7 +54,7 @@ Predeclared replication protocol (2026-09-20, before the run): train PointerHead
 
 - [x] `hev/serve.py`: FastAPI `POST /v1/systemone` plus `/v1/models`, same shapes as kev so the TypeSafe SDK and kev's playground work with a base_url change.
 - [x] Replicate PointerHead with predeclared seed 1. Report both seeds, never only the better one. [Aggregate](runs/m3-pointer-replication-v2/result.json)
-- [ ] Optional: port and run kev's Jev client for a live three-way comparison only when a TypeSafe key is deliberately provided via AI Gateway; this is not required for the M3 exit criterion.
+- [x] Direct TypeSafe evaluation of `jev-1.13.0` on decision-v2 calibration/development and transfer-v2 development, followed by a comprehensive Hev / kev / Jev aggregate. [Three-way result](runs/m3-three-way-v2-r1/result.json)
 
 ### M4. Beyond the first result (pick after M2)
 

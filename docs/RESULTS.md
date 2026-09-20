@@ -1,5 +1,54 @@
 # Results
 
+## M3: comprehensive Hev / kev / Jev comparison  (2026-09-20)
+
+M3 now includes a same-suite comparison of the selected two-seed Hev PointerHead, the two checked-in kev Qwen3-0.6B seeds, and a live TypeSafe direct-API snapshot resolving consistently to `jev-1.13.0`. All models were scored on the exact checksum-matched `decision-v2` and `transfer-v2` development populations; Jev's temperature was fit only on `decision-v2` calibration and then applied unchanged. The locked test split was not accessed. The authoritative ledger is the [three-way result](../runs/m3-three-way-v2-r1/result.json); the live source ledgers are [Jev calibration](../runs/m3-jev-direct-calibration-v2-r1/result.json), [decision](../runs/m3-jev-direct-decision-v2/result.json), and [transfer](../runs/m3-jev-direct-transfer-v2/result.json).
+
+### Headline comparison
+
+Hev and kev values below are two-seed means with seed ranges; Jev is one hosted snapshot, not a seed average. Calibration preserves accuracy. Kev's checked-in v2 artifacts do not report calibrated transfer metrics.
+
+| Model | Decision accuracy | Transfer accuracy | Decision raw NLL | Decision calibrated NLL / ECE / Brier | Transfer raw NLL |
+|---|---:|---:|---:|---:|---:|
+| Hev PointerHead | 80.00% (79.33–80.67) | 60.71% (60.36–61.07) | 0.606 | 0.502 / 0.020 / 0.269 | 0.989 |
+| kev Qwen3-0.6B | 80.46% (79.33–81.58) | 62.05% (61.96–62.14) | 0.604 | 0.511 / 0.030 / 0.272 | 0.980 |
+| Jev `1.13.0` | **83.50%** | **85.36%** | 0.813* | 0.544 / 0.103 / 0.274 | 0.782* |
+| Hev SetHead, seed 0 ablation | 80.92% | 60.71% | 0.582 | 0.486 / 0.022 / 0.260 | 0.950 |
+
+`*` Jev returns rounded probabilities, including exact zeros. Its reported NLL uses the common `1e-9` floor and is therefore floor-sensitive; accuracy, Brier, and ECE do not have that same logarithmic sensitivity. [Metric policy and floor analysis](../runs/m3-three-way-v2-r1/result.json)
+
+Jev minus Hev accuracy was paired on identical examples with 10,000 source-stratified, record-clustered bootstrap draws. Temperature scaling does not change these accuracy differences.
+
+| Hev target | Decision Jev − Hev (95% CI) | Transfer Jev − Hev (95% CI) |
+|---|---:|---:|
+| PointerHead seed 0 | +2.83 pp (+0.67, +5.00) | +24.29 pp (+20.36, +28.39) |
+| PointerHead seed 1 | +4.17 pp (+2.00, +6.33) | +25.00 pp (+21.07, +28.93) |
+| SetHead seed 0 | +2.58 pp (+0.42, +4.75) | +24.64 pp (+20.71, +28.57) |
+
+These intervals quantify example-level uncertainty for each fixed model instance; they are not a Jev training-seed variance estimate. Kev's checked-in v2 artifacts contain no per-example rows, so only point differences are possible: Hev Pointer minus seed-matched kev was −0.92 / 0.00 pp on decision and −0.89 / −1.79 pp on transfer, while Jev minus kev was +1.92 / +4.17 pp on decision and +23.39 / +23.21 pp on transfer. [Pairwise evidence](../runs/m3-three-way-v2-r1/result.json)
+
+### Where the difference comes from
+
+Jev led every transfer task in the seed-0 Hev comparison. The largest gaps were MMLU (90.0% versus 36.3%), held-out authorization (100.0% versus 57.5%), and held-out deadline (92.5% versus 25.0%); it also led emotion, PAWS, QNLI, SciQ, and tweet-offensive. On familiar decision tasks the result was mixed but favored Jev overall: notable gains included BoolQ (92.5% versus Hev's 77.5% / 68.8%), MNLI (90.0% versus 75.0% / 70.0%), and Banking77 (82.5% versus 76.3% / 68.8%). Full per-task, per-source, and—where rows exist—per-type tables are embedded in the aggregate. Kev per-type metrics are unavailable because its v2 ledgers omit both rows and a type summary. [Task evidence](../runs/m3-three-way-v2-r1/result.json)
+
+### Calibration and rounded-zero sensitivity
+
+Jev's calibration-only macro-task NLL selected `T=3.364`, improving calibration macro-task NLL from 0.976 to 0.629. On decision development this reduced overall NLL from 0.813 to 0.544, but worsened ECE from 0.070 to 0.103 and Brier from 0.256 to 0.274. On transfer it reduced NLL from 0.782 to 0.533 while worsening ECE from 0.056 to 0.141 and Brier from 0.221 to 0.267. Temperature fitting optimizes calibration macro-task NLL, not ECE or Brier, and transfer calibration remains descriptive. Hev and kev had materially lower calibrated decision ECE at 0.020 and 0.030 respectively. [Calibration evidence](../runs/m3-three-way-v2-r1/result.json)
+
+| Jev NLL floor | Decision NLL | Transfer NLL |
+|---|---:|---:|
+| `1e-3` | 0.525 | 0.462 |
+| `1e-6` | 0.669 | 0.622 |
+| `1e-9` | 0.813 | 0.782 |
+
+### Option order
+
+The protocols differ and must not be collapsed into one ranking. Hev's architectural study evaluated six orders for every eligible Choice question: both Pointer seeds and SetHead had zero flips over 696 decision and 348 transfer questions, with decision p90 correct-probability spread at most `1.45e-6`. The frozen common variant gives only clean versus one permutation on 72 decision and 36 transfer questions: kev flipped 5.56% / 4.17% on decision and 8.33% on transfer in both seeds; Jev flipped 1.39% on decision and 0% on transfer, while its maximum probability movement was 0.456 and 0.200. Jev's zero observed transfer flips does not prove architectural invariance. [Order evidence](../runs/m3-three-way-v2-r1/result.json)
+
+### Conclusion and scope
+
+On these development suites, Hev reproduces kev-level accuracy while uniquely delivering the tested exact option-order behavior. Jev is more accurate—especially on transfer—but its returned probabilities are coarsely rounded, its NLL is floor-sensitive, and decision-v2 temperature scaling did not improve ECE or Brier. SetHead remains an unsupported complexity increase: its seed-0 accuracy does not close the Jev gap and M2 found no paired advantage over PointerHead. This is a same-evaluation comparison, not a controlled training comparison: the systems differ in architecture, training data, compute, and availability. Jev is a hosted version snapshot rather than a reproducible checkpoint. The direct evaluation used 2,292 calls, 1,097,597 input tokens, and an estimated **$0.0461**. [Protocol, provenance, and caveats](../runs/m3-three-way-v2-r1/result.json)
+
 ## M3: PointerHead replication  (2026-09-20)
 
 M3 repeated the selected PointerHead with predeclared training seed 1 and the unchanged M2 recipe, then evaluated the same decision-v2 and transfer-v2 development populations. The locked test split was not accessed. The authoritative artifacts are the [seed-1 result](../runs/m3-pointer-s1/result.json) and [two-seed aggregate](../runs/m3-pointer-replication-v2/result.json).

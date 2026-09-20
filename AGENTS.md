@@ -73,7 +73,26 @@ uv run python -m hev.train --suite evals/decision-v2 --out runs/m3-pointer-s1 --
 uv run python -m hev.evaluate --run runs/m3-pointer-s1 --suite evals/decision-v2 --transfer evals/transfer-v2 --device mps --seed 1 --permutations 6 --bootstrap-samples 10000
 uv run python -m hev.replicate --seed0 runs/m2-pointer-s0 --seed1 runs/m3-pointer-s1 --out runs/m3-pointer-replication-v2 --bootstrap-samples 10000 --seed 20260920
 uv run --extra serve python -m hev.serve --run runs/m3-pointer-s1 --port 8008
+
+set -a && source .env && set +a && uv run --extra jev python -m hev.jev --suite evals/decision-v2 --split calibration --out runs/m3-jev-direct-calibration-v2-r1 --budget 0.05 --max-calls 500
+set -a && source .env && set +a && uv run --extra jev python -m hev.jev --suite evals/decision-v2 --split development --out runs/m3-jev-direct-decision-v2 --budget 0.10 --max-calls 1300
+set -a && source .env && set +a && uv run --extra jev python -m hev.jev --suite evals/transfer-v2 --split development --out runs/m3-jev-direct-transfer-v2 --budget 0.10 --max-calls 800
+
+uv run python -m hev.three_way \
+  --hev-seed0 runs/m2-pointer-s0 \
+  --hev-seed1 runs/m3-pointer-s1 \
+  --hev-set runs/m2-set-s0 \
+  --kev-seed0 /Users/nafis/Documents/personal/kev/runs/ablation-v2/06-trial-6/result.json \
+  --kev-seed1 /Users/nafis/Documents/personal/kev/runs/ablation-v2/07-trial-7/result.json \
+  --jev-calibration runs/m3-jev-direct-calibration-v2-r1 \
+  --jev-decision runs/m3-jev-direct-decision-v2 \
+  --jev-transfer runs/m3-jev-direct-transfer-v2 \
+  --out runs/m3-three-way-v2-r1 \
+  --bootstrap-samples 10000 \
+  --seed 20260920
 ```
+
+The M3 Jev and three-way output directories above are immutable and must not be reused. Failed attempts retained under `runs/m3-jev-calibration-v2`, `runs/m3-jev-direct-calibration-v2`, and `runs/m3-three-way-v2` must also not be reused.
 
 Hardware: Apple M4 Max, 36 GB. The pinned Qwen3-0.6B-Base tokenizer and model are cached from M1.
 

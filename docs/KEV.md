@@ -17,7 +17,7 @@ kev is a LoRA adapter (r=16) plus a 256-dim pointer head on Qwen 0.5B/0.6B. A re
 | `kev/train.py` | training loop, perm-KL, ranked probability score, batching | Not ported. M1 writes hev's own; reuse the loss definitions. |
 | `kev/evaluate.py` | accuracy/ECE/permutation/IIA/isolation/latency studies | Metric functions ported at M1; at M2 the clean/variant row and metric summaries are adapted into `hev/evaluate.py` with attribution. Model inference and orchestration remain hev-specific. |
 | `kev/benchmark.py`, `kev/compare.py`, `kev/plot.py` | bootstrap CIs, kev-vs-jev comparison, figures | Grouped bootstrap logic adapted into `hev/evaluate.py`/`hev/compare.py` at M2 with attribution. Kev v2 aggregate result artifacts lack per-example rows, so kev seed-0/seed-1 numbers enter only as hash-verified point baselines; no paired hev-vs-kev CI is possible. Plotting not ported. |
-| `kev/jev.py` | client for TypeSafe's Jev via AI Gateway | Port at M3 if a live Jev comparison is wanted. |
+| `kev/jev.py` | client for TypeSafe's Jev via AI Gateway | **Rewritten** at M3 as `hev/jev.py` against TypeSafe's direct API, with immutable calibration/development ledgers, bounded cost/calls, rounded-probability normalization, and version capture. |
 | `kev/serve.py` | FastAPI `/v1/systemone`, `/permute`, `/separate` | M3 writes hev's own `/v1/systemone` and `/v1/models` compatibility routes; playground-only probe routes are not ported. |
 | `kev/experiment.py`, `modal_app.py` | config-only trial runner, Modal H100 | Port if MPS becomes the bottleneck. |
 | `kev/composition.py`, `kev/study_v3.py`, `kev/contrastive.py` | synthetic compositional policy data, v3 study | Not needed until M4. |
@@ -32,6 +32,7 @@ All from the kev clone.
 - kev vs Jev, familiar sources: 79.7% vs 81.1% micro accuracy, macro difference -1.8 [-5.5, +1.7]. `runs/kev-vs-jev-v1.json`.
 - kev vs Jev, transfer-v1: 63.3% vs 82.3%, -19.1 [-23.1, -15.0]. `runs/kev-vs-jev-transfer-v1.json`.
 - Qwen3-0.6B-Base on the v2 recipe, decision-v2 development: 81.6% / 79.3% (two seeds); transfer-v2: 62.0% / 62.1%. `runs/ablation-v2/06-trial-6/result.json`, `07-trial-7/result.json`.
+- M3 same-v2 aggregate: Hev Pointer 80.00% / 60.71% two-seed means, kev 80.46% / 62.05%, hosted Jev `1.13.0` 83.50% / 85.36% on decision / transfer development. Jev is one hosted snapshot and its rounded-zero NLL is floor-sensitive. `runs/m3-three-way-v2-r1/result.json`.
 - Qwen2.5-0.5B same recipe: 74.2% / 65.8% dev; 60.5% / 48.2% transfer. `runs/ablation-v2/results.jsonl`.
 - v3 capacity study: Qwen3-4B beats 0.6B by +17.5 pp on transfer-v3 [+13.0, +22.1]. `runs/v3-data-capacity-s0/results.jsonl`.
 - Calibration warning: one 0.6B trial scored 50% on transfer authorization with 99.6% mean confidence. `runs/ablation-v2/06-trial-6/result.json`.

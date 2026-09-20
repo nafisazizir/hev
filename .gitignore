@@ -6,6 +6,9 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.env
+.env.*
+!.env.example
 
 # training outputs (each run is a directory; keep results ledgers, not weights)
 runs/*/*
