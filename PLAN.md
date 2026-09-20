@@ -79,7 +79,7 @@ Two earlier aggregate attempts are retained as failures and must never be reused
 
 Step 2 is now M4b.
 
-### M4b. Controlled retrain on decision-v4  (started 2026-09-20)
+### M4b. Controlled retrain on decision-v4  (done 2026-09-21)
 
 Step 2 of the controlled comparison: train Hev's PointerHead on kev's own training partition under kev's published v4 recipe, three predeclared seeds, so the D14 comparison no longer confounds architecture with training data. Protocol fixed in [D15](docs/DECISIONS.md). Precision and hardware still differ and always will on this machine, so this removes one confound, not all of them.
 
@@ -87,9 +87,11 @@ Step 2 of the controlled comparison: train Hev's PointerHead on kev's own traini
 - [x] Read the trainable/eval-only policy from the suite manifest so v4's `legacy_policy` and `compositional` arms may train while `contrastive` may not, without changing decision-v2's policy (`hev/data.py::source_policy`).
 - [x] Wire kev's none-pair minimal-pair augmentation into the loop with kev's accumulation weighting (`--p-none-pair`).
 - [x] Record the deviations Hev cannot remove instead of pretending to match: `--recipe kev-v4` matches every shared knob or refuses to start, and writes precision, hardware, micro-batching and encoding differences into `training_config.json`.
-- [ ] Train seeds 0, 1 and 2 (`runs/m4b-pointer-v4-s0/-s1/-s2`), 2,724 optimizer steps each.
-- [ ] Evaluate each seed on decision-v4 and transfer-v4 development under D13's evaluation settings (`runs/m4b-eval-v4-s0/-s1/-s2`).
-- [ ] Three-seed aggregate against `runs/m4-kev-0.6b-v4-r1` with D13's populations and margins (`runs/m4b-v4-three-seed`), then RESULTS.md, README, KEV.md and the model card.
+- [x] Train seeds 0, 1 and 2, 2,724 optimizer steps each, all passing the loss-decrease and provenance gates. [seed 0](runs/m4b-eval-v4-s0/result.json), [seed 1](runs/m4b-eval-v4-s1/result.json), [seed 2](runs/m4b-eval-v4-s2/result.json). Seed 0 lives at `-s0-r1`: the predeclared directory is a killed launch that never trained (D15 addendum).
+- [x] Evaluate each seed on decision-v4 and transfer-v4 development under D13's evaluation settings. [seed 0](runs/m4b-eval-v4-s0/result.json), [seed 1](runs/m4b-eval-v4-s1/result.json), [seed 2](runs/m4b-eval-v4-s2/result.json)
+- [x] Three-seed aggregate against `runs/m4-kev-0.6b-v4-r1` with D13's populations and margins (`hev/controlled.py`), then RESULTS.md, README, KEV.md and the model card. [Aggregate](runs/m4b-v4-three-seed/result.json)
+
+Exit met 2026-09-21 by the immutable [three-seed aggregate](runs/m4b-v4-three-seed/result.json). Sanity gate passed at zero difference; every seed passed the mechanism checks with zero flips. On the primary decision population kev leads by 0.67 points at every seed with every 95% interval crossing zero and the 90% upper bounds at 2.21 / 2.02 / 2.02 against the 2.0 margin, so all three are inconclusive rather than equivalent. On primary transfer kev leads by 2.71 / 5.42 / 1.46 points, kev-better at seed 1 and inconclusive at the others; three-seed mean +3.19. Calibration is comparable. The M4 step 1 decision gap was mostly data, as D14 expected; the transfer gap is consistent with kev's own isolation measurement. Precision and hardware still differ. Outcome recorded in [D16](docs/DECISIONS.md); tables in [docs/RESULTS.md](docs/RESULTS.md).
 
 ### M5. Beyond the first result (pick after M4)
 

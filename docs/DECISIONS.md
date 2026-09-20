@@ -176,3 +176,17 @@ Hev seed 1 is materially weaker than seed 0 on the primary decision population, 
 ### D15 addendum: the artifact paths that were actually used  (2026-09-20)
 
 D15 predeclared `runs/m4b-pointer-v4-s0`. That directory exists and holds only `training_config.json` (status `configured`, written 16:08, the minute the D15 code was committed) with no `training_metrics.json` and no `failure.json`: the first launch was killed from outside before its first optimizer step, so no model and no gate were ever involved. Runs are immutable and failures are kept, so the stub stays and seed 0 was trained as `runs/m4b-pointer-v4-s0-r1` with the identical command. Seeds 1 and 2 kept their predeclared paths. The evaluation and aggregate paths are unchanged: `runs/m4b-eval-v4-s0/-s1/-s2` and `runs/m4b-v4-three-seed`. Cite `-s0-r1` for seed 0.
+
+## D16. M4b outcome: with data held equal, isolation is within a point on decision and behind on transfer  (2026-09-21)
+
+M4b ran under D15 without amendment. All three seeds completed kev's 2,724 steps, passed both training gates and every mechanism check, and the kev predictor sanity gate passed again at zero difference. [Aggregate](../runs/m4b-v4-three-seed/result.json)
+
+On the primary decision population kev leads each seed by 0.67 points, every 95% interval crosses zero, and the 90% upper bounds are 2.21, 2.02 and 2.02 against the 2.0 point margin. Under the predeclared rule all three are inconclusive. Record this as "within a point, equivalence not demonstrated", and do not round it up to parity: the rule was fixed before the runs and the bar was missed, however narrowly. On primary transfer kev leads by 2.71, 5.42 and 1.46 points; seed 1 is a kev win and the others are inconclusive; the three-seed mean is +3.19 with no pooled interval.
+
+**What this changes.** The M4 step 1 decision gap of 1.63 / 3.85 points was mostly training data; D14's expectation held. Hev's order-invariance claim now rests on checkpoints that match kev's data and recipe and stay within a point of it on decision, which is a materially stronger position than M4 step 1's. The policy arms are now trained for both models, so the M4 step 1 caveat about untrained arms no longer applies to the v4 checkpoints.
+
+**What it does not change.** Precision, hardware and micro-batching still differ, so the transfer gap cannot be attributed to the encoding alone. kev's own `option_isolation` measurement showed the same direction and roughly the same size, which makes the encoding the likeliest explanation, but "likeliest" is not a controlled result. Only kev's seed 0 has rows, so every paired interval is one kev checkpoint against three Hev seeds. SetHead was not retrained and nothing here bears on it.
+
+**Publication.** The v4 checkpoints are not published and the served default remains the v2-trained `seed-0` (D11, D12). Whether to replace the Hub revisions with the v4 checkpoints is a separate decision; if taken, all three seeds go up together and none is selected.
+
+**Next.** M5 candidates stand. The one experiment M4b motivates directly is a transfer-focused one: whether the isolation cost on out-of-source questions is a capacity effect (kev saw it grow at 4B), a data effect, or an artifact of the pointer readout that SetHead-style interaction could recover. That is a new predeclared protocol, not an extension of D15.

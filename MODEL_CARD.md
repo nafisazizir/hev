@@ -64,7 +64,8 @@ This is a **development-only research prototype**. It is not a production decisi
 
 - Code, design, training and evaluation: [github.com/nafisazizir/hev](https://github.com/nafisazizir/hev)
 - Planned Hub layout: `OWNER/hev-0.6b`, revisions `seed-0` and `seed-1`
-- Current result ledger (M4, v4 development): [`runs/m4-released-v4-r2/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m4-released-v4-r2/result.json)
+- Current result ledger (M4b, controlled retrain on v4): [`runs/m4b-v4-three-seed/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m4b-v4-three-seed/result.json)
+- Released-checkpoint ledger (M4 step 1, v4 development): [`runs/m4-released-v4-r2/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m4-released-v4-r2/result.json)
 - Earlier three-way ledger (M3, v2 development): [`runs/m3-three-way-v2-r1/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m3-three-way-v2-r1/result.json)
 
 ## Model Details
@@ -185,9 +186,22 @@ Training data is augmented independently each epoch from deterministic per-recor
 
 All reported results use frozen **development** partitions. The locked test split has not been accessed. No number in this card is a test-set result.
 
-### v4 development: current headline
+### v4 development, controlled retrain: current headline
 
-Both checkpoints were re-scored on kev's frozen `decision-v4` and `transfer-v4` development splits alongside the released `jaredpalmer/kev-0.6b` checkpoint (Hub snapshot `83e05fabf7ef08e343bb4daf144e08777f99713d`, seed 0 of 3), using one evaluator and identical rows. The primary population is the ten public decision sources and the six public transfer sources: both models trained on the decision ten and neither trained on the transfer six. Intervals are 95% source-stratified, clustered bootstrap intervals with 10,000 draws. Temperature was fitted per model on `decision-v4` calibration only and applied unchanged to transfer.
+The published checkpoints trained on `decision-v2`. To remove that confound, the same PointerHead recipe was retrained on kev's own `decision-v4` partition (10,896 records, none-of-the-above minimal pairs on 25% of Choice records) under kev's published v4 recipe for three predeclared seeds, then scored against the released `jaredpalmer/kev-0.6b` on identical `decision-v4` and `transfer-v4` development rows. Those three checkpoints are **not published**; they are the controlled measurement behind this card's claims. Precision (fp32 against bf16), hardware (Apple MPS against an H100) and micro-batching still differ.
+
+| Model | Decision accuracy, n=1040 | Transfer accuracy, n=480 | Decision calibrated ECE | Decision calibrated Brier |
+|---|---:|---:|---:|---:|
+| kev-0.6b released, seed 0 | 81.35% (78.85–83.75) | 65.42% (61.46–69.38) | 0.0391 | 0.2702 |
+| Hev PointerHead v4, seed 0 | 80.67% (78.17–83.17) | 62.71% (58.75–66.67) | 0.0400 | 0.2645 |
+| Hev PointerHead v4, seed 1 | 80.67% (78.17–83.17) | 60.00% (55.83–63.96) | 0.0394 | 0.2699 |
+| Hev PointerHead v4, seed 2 | 80.67% (78.27–83.08) | 63.96% (60.00–67.92) | 0.0280 | 0.2631 |
+
+Paired kev minus Hev on identical rows: decision +0.67 points at every seed, 95% intervals (−1.15, +2.50), (−0.96, +2.31) and (−0.87, +2.31), all inconclusive under the predeclared rule and each missing the 2.0 point equivalence bar by at most 0.21 points of the 90% bound; transfer +2.71 (−1.88, +7.29), +5.42 (+1.04, +9.79) and +1.46 (−3.12, +6.04), a kev win at seed 1 and inconclusive otherwise. The three identical decision figures are distinct models with equal correct counts; they disagree on 82 to 97 rows pairwise. All three seeds flip zero Choice questions under the exhaustive six-order protocol. Full tables: [RESULTS](https://github.com/nafisazizir/hev/blob/main/docs/RESULTS.md) and [`runs/m4b-v4-three-seed/result.json`](https://github.com/nafisazizir/hev/blob/main/runs/m4b-v4-three-seed/result.json).
+
+### v4 development: the published checkpoints against the released kev
+
+Both published checkpoints were re-scored on kev's frozen `decision-v4` and `transfer-v4` development splits alongside the released `jaredpalmer/kev-0.6b` checkpoint (Hub snapshot `83e05fabf7ef08e343bb4daf144e08777f99713d`, seed 0 of 3), using one evaluator and identical rows. The primary population is the ten public decision sources and the six public transfer sources: both models trained on the decision ten and neither trained on the transfer six. Intervals are 95% source-stratified, clustered bootstrap intervals with 10,000 draws. Temperature was fitted per model on `decision-v4` calibration only and applied unchanged to transfer.
 
 | Model | Decision accuracy, n=1040 | Transfer accuracy, n=480 | Decision calibrated ECE | Decision calibrated Brier |
 |---|---:|---:|---:|---:|
@@ -238,13 +252,13 @@ Exact order invariance is not shown to improve accuracy.
 ## Limitations
 
 - **No locked-test result.** Every headline number is development-only.
-- **Behind the released kev on the fair v4 population.** Hev is 1.63 points behind `kev-0.6b` on decision at seed 0, with an interval that crosses zero, and 3.85 points behind at seed 1, with an interval that excludes zero. Neither seed reaches the predeclared equivalence bar.
-- **The kev comparison is confounded by training data.** kev trained on roughly three times as many records, on a newer suite, with none-of-the-above minimal pairs and on different hardware and precision. No observed difference may be attributed to architecture.
+- **The published checkpoints are behind the released kev.** Trained on `decision-v2`, they are 1.63 and 3.85 points behind `kev-0.6b` on the public v4 decision sources. The controlled v4 retrains close that to 0.67 points at every seed, but those retrains are not the published weights.
+- **Transfer cost of isolation.** With data and recipe matched, kev leads the v4 retrains by 1.46 to 5.42 points on the public transfer sources. Precision, hardware and micro-batching still differ, so this cannot be attributed to the encoding alone, though it matches kev's own isolation measurement.
 - **Exact order invariance is not unique to this model.** kev implements its own `option_isolation` and has measured a 0.0 flip rate with it at 0.6B. Invariance is a property of the mask, not evidence of better accuracy.
 - **One kev checkpoint only.** Only kev's published seed-0 checkpoint can be re-scored. Its other two seeds are point-only figures from kev's own evaluator with no per-example rows, so they can never enter a paired interval.
-- **Policy and compositional structures are untrained.** Hev has never seen the v4 policy arms. Results there are descriptive and carry no verdict.
-- **Seed variance is material.** Two seeds of one recipe span 79.71% and 77.50% on primary v4 decision accuracy and 0.0221 and 0.0492 on calibrated ECE. Differences smaller than that span are not meaningful.
-- **Transfer gap.** Out-of-source accuracy is 64.38% and 63.96% on the public v4 transfer sources.
+- **Policy and compositional structures are untrained in the published checkpoints.** They never saw the v4 policy arms; results there are descriptive. The v4 retrains did train on them.
+- **Seed variance is material.** The published pair spans 79.71% and 77.50% on primary v4 decision accuracy; the three v4 retrains span 60.00% to 63.96% on primary transfer. Differences smaller than those spans are not meaningful.
+- **Transfer gap.** Out-of-source accuracy is 64.38% and 63.96% for the published checkpoints and 62.71% / 60.00% / 63.96% for the v4 retrains on the public v4 transfer sources, against kev's 65.42%.
 - **Small backbone.** Factual knowledge, arithmetic and multi-step reasoning are limited.
 - **Narrow supervision.** English classification datasets and deterministic policies do not cover arbitrary business workflows.
 - **Pointer bottleneck.** Options are scored independently. Comparative reasoning can be difficult, especially for close or high-cardinality choices.
@@ -266,7 +280,7 @@ Use human review for consequential decisions. Log model version, full criteria a
 
 ## Environmental Impact
 
-Each local training run took 19–22 minutes on one Apple M4 Max. Energy consumption was not measured. Evaluation runs, the hosted Jev comparison and the M4 re-scoring of the released kev checkpoint are documented in the immutable ledgers.
+Each published checkpoint's training run took 19–22 minutes on one Apple M4 Max; the three v4 retrains took 82–106 minutes each. Energy consumption was not measured. Evaluation runs, the hosted Jev comparison and the M4 re-scoring of the released kev checkpoint are documented in the immutable ledgers.
 
 ## Citation
 

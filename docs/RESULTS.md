@@ -1,6 +1,105 @@
 # Results
 
+## M4b: controlled retrain on decision-v4, three seeds  (2026-09-21)
+
+M4b removes the training-data confound from M4 step 1. Hev's PointerHead was retrained on kev's own `decision-v4` training partition (10,896 records, fetched from kev's pinned Hub mirror and checksum-verified) under kev's published v4 recipe, including the none-of-the-above minimal-pair augmentation Hev previously lacked, for three predeclared seeds. Every run was gated by `--recipe kev-v4`, which refuses to start unless every shared knob matches kev's published trial. The protocol, populations, margins and verdict rules were fixed in [D15](DECISIONS.md) before any run, and the three seeds are reported together: no seed was selected. The locked test split was not accessed.
+
+What still differs, recorded in every `training_config.json`: precision (Hev fp32, kev bf16), hardware (Apple MPS, kev an H100), micro-batching (batch 1 with accumulation 8 against batch 8), and the encoding itself, which is the object of study. So this is a same-data, same-recipe comparison of two encodings on two different machines. It is closer to an architecture comparison than M4 step 1, but a remaining difference still cannot be attributed to the encoding alone.
+
+The authoritative ledger is [`runs/m4b-v4-three-seed/result.json`](../runs/m4b-v4-three-seed/result.json). Training ledgers, embedded as `training_config` and `training_metrics` in each evaluation ledger since run directories keep only their `result.json` in git: [seed 0](../runs/m4b-eval-v4-s0/result.json), [seed 1](../runs/m4b-eval-v4-s1/result.json), [seed 2](../runs/m4b-eval-v4-s2/result.json). Evaluation ledgers: [seed 0](../runs/m4b-eval-v4-s0/result.json), [seed 1](../runs/m4b-eval-v4-s1/result.json), [seed 2](../runs/m4b-eval-v4-s2/result.json). The kev side is the same re-scored released checkpoint as M4 step 1, [`runs/m4-kev-0.6b-v4-r1`](../runs/m4-kev-0.6b-v4-r1/result.json), and its predictor sanity gate passed again at an absolute difference of 0.0 on both suites. Seed 0 trained under the retry path `-s0-r1` because the predeclared directory holds a killed launch that never reached an optimizer step ([D15 addendum](DECISIONS.md)).
+
+### Training
+
+All three runs completed kev's step count exactly and passed the loss-decrease gate on the shared 1,024-record probe. [Aggregate provenance](../runs/m4b-v4-three-seed/result.json)
+
+| Seed | Optimizer steps | Forward records (of which pair siblings) | Fixed objective before → after | Wall time | Evidence |
+|---|---:|---:|---:|---:|---|
+| 0 | 2,724 | 27,070 (5,278) | 1.871 → 0.246 | 105.6 min | [metrics](../runs/m4b-eval-v4-s0/result.json) |
+| 1 | 2,724 | 27,166 (5,374) | 2.445 → 0.236 | 88.9 min | [metrics](../runs/m4b-eval-v4-s1/result.json) |
+| 2 | 2,724 | 27,002 (5,210) | 1.694 → 0.212 | 81.5 min | [metrics](../runs/m4b-eval-v4-s2/result.json) |
+
+kev's published trial reports 2,724 steps and 613 s on an H100 for the same recipe (kev `runs/v4-06b-hardened/00-trial-0/result.json`).
+
+### Primary population: the headline table
+
+Same population and statistics as M4 step 1: ten public decision sources, six public transfer sources, 95% source-stratified `(source, group_id)`-clustered percentile bootstrap, 10,000 draws. Both models now trained on the same 10,896 records. [Aggregate](../runs/m4b-v4-three-seed/result.json)
+
+| Model | Decision accuracy, n=1040 (95% CI) | Transfer accuracy, n=480 (95% CI) | Evidence |
+|---|---:|---:|---|
+| kev-0.6b released, seed 0 | 81.35% (78.85–83.75) | 65.42% (61.46–69.38) | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Hev PointerHead v4, seed 0 | 80.67% (78.17–83.17) | 62.71% (58.75–66.67) | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Hev PointerHead v4, seed 1 | 80.67% (78.17–83.17) | 60.00% (55.83–63.96) | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Hev PointerHead v4, seed 2 | 80.67% (78.27–83.08) | 63.96% (60.00–67.92) | [artifact](../runs/m4b-v4-three-seed/result.json) |
+
+The three identical decision figures are a coincidence of equal correct counts, 839 of 1,040 each, not a shared prediction: the seeds disagree on 96, 97 and 82 predicted keys pairwise on this population, and their intervals, calibration and transfer accuracies differ. This was checked from the row ledgers before anything was written.
+
+### Paired differences and verdicts
+
+kev minus Hev on identical rows, percentage points, same bootstrap, seed 20260920. Margins 2.0 points on decision, 3.0 on transfer; "equivalent" needs the 90% interval inside the margin, "better" needs the 95% interval to exclude zero. [Aggregate](../runs/m4b-v4-three-seed/result.json)
+
+| Hev seed | Suite | kev − Hev | 95% CI | 90% CI | Verdict | Evidence |
+|---|---|---:|---:|---:|---|---|
+| seed 0 | decision | +0.67 pp | (−1.15, +2.50) | (−0.87, +2.21) | inconclusive | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| seed 1 | decision | +0.67 pp | (−0.96, +2.31) | (−0.67, +2.02) | inconclusive | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| seed 2 | decision | +0.67 pp | (−0.87, +2.31) | (−0.67, +2.02) | inconclusive | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| seed 0 | transfer | +2.71 pp | (−1.88, +7.29) | (−1.25, +6.46) | inconclusive | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| seed 1 | transfer | +5.42 pp | (+1.04, +9.79) | (+1.87, +8.96) | kev better | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| seed 2 | transfer | +1.46 pp | (−3.12, +6.04) | (−2.29, +5.21) | inconclusive | [artifact](../runs/m4b-v4-three-seed/result.json) |
+
+**Decision.** With the data held equal, kev's lead shrinks from the +1.63 and +3.85 points of M4 step 1 to +0.67 points at every seed, and every 95% interval crosses zero. No seed reaches equivalence either: the upper 90% bounds are +2.21, +2.02 and +2.02 against a 2.0 point margin, so the predeclared rule returns inconclusive three times. Read this as kev and Hev within a point of each other on decision, with the equivalence bar missed by hundredths of a point, not as parity proven.
+
+**Transfer.** kev leads at every seed, by 1.46 to 5.42 points, and the seed-1 interval excludes zero. The three-seed mean of the point deltas is +3.19 points with a range of +1.46 to +5.42; there is no pooled interval. [Three-seed summary](../runs/m4b-v4-three-seed/result.json)
+
+This is the pattern kev's own controlled `option_isolation` measurement showed at 0.6B (roughly half a point on decision and 1.7 points on transfer, kev `runs/arch-06b/results.jsonl` trial `00-trial-0` against `runs/v4-06b-hardened/results.jsonl` `00-trial-0`), now reproduced on Hev's independent isolating encoding with paired intervals: isolation is close to accuracy-neutral in-distribution and costs some out-of-source accuracy.
+
+### Secondary population and all rows
+
+The policy arms are now a trained population for both models, which changes their meaning from M4 step 1. They stay descriptive and carry no verdict. [Aggregate](../runs/m4b-v4-three-seed/result.json)
+
+| Population | n | kev | Hev seed 0 | Hev seed 1 | Hev seed 2 | Evidence |
+|---|---:|---:|---:|---:|---:|---|
+| decision policy arms | 224 | 76.34% | 83.04% | 78.57% | 82.14% | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| transfer policy arms | 176 | 44.32% | 50.00% | 42.61% | 45.45% | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| decision, all rows | 1,264 | 80.46% | 81.09% | 80.30% | 80.93% | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| transfer, all rows | 656 | 59.76% | 59.30% | 55.34% | 58.99% | [artifact](../runs/m4b-v4-three-seed/result.json) |
+
+On all decision rows, which is the figure kev publishes, Hev's three-seed mean is 80.78% (range 80.30–81.09) against kev's own three-seed mean of 79.91% (range 79.27–80.46, kev's evaluator, point-only). On all transfer rows Hev's mean is 57.88% (55.34–59.30) against kev's 59.91% (59.45–60.52). Only kev's seed 0 has rows here, so the seed-to-seed comparison is descriptive. [Seed spread](../runs/m4b-v4-three-seed/result.json)
+
+### Calibration
+
+Temperature fitted once per model on `decision-v4` calibration clean rows and applied unchanged to transfer. Fitted temperatures: kev 1.6245, Hev 1.6818 / 1.6818 / 1.8025 (the fit selects from an 81-point log grid, so two seeds sharing a grid point is expected). [Aggregate](../runs/m4b-v4-three-seed/result.json)
+
+| Metric | kev | Hev seed 0 | Hev seed 1 | Hev seed 2 | Evidence |
+|---|---:|---:|---:|---:|---|
+| Decision primary, calibrated ECE | 0.0391 | 0.0400 | 0.0394 | 0.0280 | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Decision primary, calibrated Brier | 0.2702 | 0.2645 | 0.2699 | 0.2631 | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Decision primary, calibrated NLL | 0.5057 | 0.4915 | 0.4945 | 0.4837 | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Transfer primary, calibrated ECE | 0.0555 | 0.0736 | 0.0567 | 0.0594 | [artifact](../runs/m4b-v4-three-seed/result.json) |
+
+Paired calibrated NLL, kev minus Hev, on primary decision: +0.014 (−0.015, +0.044), +0.011 (−0.016, +0.039), +0.022 (−0.005, +0.050); Hev's NLL is lower at every seed but no interval excludes zero. On primary transfer kev's NLL is lower at seed 0, −0.055 (−0.097, −0.011), and the other two intervals cross zero. Calibration is comparable between the systems once the data match; the M4 step 1 ECE ordering was seed noise, as that section said. [Paired calibration](../runs/m4b-v4-three-seed/result.json)
+
+### Option order
+
+Exhaustive six-order protocol on every eligible Choice question, all four checkpoints. D15's mechanism checks (zero flips, p90 spread and packed-versus-separate difference at most `1e-4`) passed at every seed. [Order study](../runs/m4b-v4-three-seed/result.json)
+
+| Model | Decision flips of 628 | Decision p90 spread | Transfer flips of 348 | Transfer p90 spread | Packed/separate max | Evidence |
+|---|---:|---:|---:|---:|---:|---|
+| kev-0.6b released, seed 0 | 43 (6.85%) | 0.1334 | 87 (25.00%) | 0.3139 | `3.28e-6` | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Hev PointerHead v4, seed 0 | 0 | `8.94e-7` | 0 | `2.82e-6` | `3.70e-6` | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Hev PointerHead v4, seed 1 | 0 | `1.05e-6` | 0 | `2.04e-6` | `1.20e-5` | [artifact](../runs/m4b-v4-three-seed/result.json) |
+| Hev PointerHead v4, seed 2 | 0 | `7.33e-7` | 0 | `2.62e-6` | `1.04e-5` | [artifact](../runs/m4b-v4-three-seed/result.json) |
+
+Minimal-pair training did not change kev's encoding's order behaviour and does not touch Hev's: the invariance comes from the mask, and the same checkpoints that are within a point of kev on decision flip nothing.
+
+### Scope
+
+What this step supports: with the training partition, recipe and augmentation held equal, Hev's isolating encoding is within about a point of the released kev on the public decision sources at all three seeds (+0.67 points to kev, every 95% interval crossing zero, equivalence missed by at most 0.21 points of the 90% bound), behind by 1.5 to 5.4 points on the public transfer sources (kev better at one seed, inconclusive at two), comparably calibrated, and exactly order-invariant where kev flips 6.85% and 25.00% of Choice questions. The M4 step 1 gap on decision was mostly training data, as D14 expected.
+
+What it does not support: attributing the remaining transfer gap to the encoding alone, because precision, hardware and micro-batching still differ and kev's H100 bf16 run cannot be reproduced here; any locked-test statement; any seed selection; any claim about Jev; and any statement about SetHead, which was not retrained. kev's published seed 0 remains the only kev checkpoint with rows, so every paired interval is against one kev seed. [Caveats](../runs/m4b-v4-three-seed/result.json)
+
 ## M4 step 1: released kev-0.6b versus Hev on v4 development  (2026-09-20)
+
+**Superseded on the data question by M4b above**, which retrained Hev on kev's own partition and recipe. The numbers below remain correct for the v2-trained checkpoints and are what the published `seed-0` / `seed-1` revisions score.
 
 M4 step 1 is an evaluation-only comparison. The released `jaredpalmer/kev-0.6b` checkpoint (Hub snapshot `83e05fabf7ef08e343bb4daf144e08777f99713d`, kev trial `v4-06b-hardened/00-trial-0`, seed 0 of 3) and the two Hev PointerHead checkpoints were scored by one evaluator on the same frozen `decision-v4` and `transfer-v4` **development** rows. Nothing was trained in this step and the locked test split was not accessed.
 

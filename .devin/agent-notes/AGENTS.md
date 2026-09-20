@@ -121,6 +121,7 @@ Hardware: Apple M4 Max, 36 GB. The pinned Qwen3-0.6B-Base tokenizer and model ar
 |---|---|
 | Roadmap and current milestone | PLAN.md |
 | M2/M3 results and conclusions | docs/RESULTS.md, runs/m2-comparison-s0/result.json, runs/m3-pointer-replication-v2/result.json |
+| M4 / M4b results (kev-0.6b on v4; controlled three-seed retrain) | docs/RESULTS.md, runs/m4-released-v4-r2/result.json, runs/m4b-v4-three-seed/result.json |
 | Mask rule, positions, heads, invariance argument | docs/DESIGN.md |
 | Illustrated walkthrough for newcomers (open in a browser) | docs/explainer.html |
 | Why each choice was made, alternatives rejected | docs/DECISIONS.md |

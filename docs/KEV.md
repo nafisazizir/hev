@@ -41,6 +41,7 @@ All from the kev clone.
 - Same seed-0 checkpoint, one ungated locked-test read: decision 0.8192 (n 1200 clean questions), transfer 0.6311 (n 656), evaluated on mps fp32. `runs/locked/kev-06b-preview-ungated/summary.json`.
 - Qwen3-0.6B-Base with kev's `option_isolation=1` on decision-v4 / transfer-v4 development: dev 0.7998, transfer 0.5808 (`runs/arch-06b/results.jsonl` trial `00-trial-0`); with isolation plus trained delimiter embeddings: dev 0.7991, transfer 0.5991 (`03-trial-3`). Permutation flip rate 0.0 with mean max delta 1.29e-7 (trial 00) and 7.18e-8 (trial 03). `runs/arch-06b/00-trial-0/result.json`, `runs/arch-06b/03-trial-3/result.json` (`permutation`).
 - Jev on decision-v4 development: acc 0.845, Brier 0.237; on transfer-v4 development: acc 0.857. kev `PLAN.md:98`.
+- Hev PointerHead retrained on kev's decision-v4 partition under the `v4-06b-hardened` recipe (M4b, three seeds, fp32 MPS): primary public decision 80.67% at every seed against the released kev's 81.35% on identical rows, paired kev-minus-Hev +0.67 with every 95% interval crossing zero; primary public transfer 62.71 / 60.00 / 63.96 against 65.42, kev better at seed 1 only. All decision rows 0.8109 / 0.8030 / 0.8093 against kev's own-evaluator three-seed 0.8046 / 0.7927 / 0.7998. Zero flips at every seed. Hev `runs/m4b-v4-three-seed/result.json`.
 
 ## Kev's v2 training recipe (what M2 reproduces)
 
