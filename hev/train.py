@@ -1,5 +1,6 @@
 """Train Hev LoRA adapters and readouts on a checksummed frozen suite."""
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -15,9 +16,35 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
-from .data import EVAL_ONLY, augment, materialize, source_seed
+from .data import EVAL_ONLY, TRAINABLE, augment, materialize, none_pair, source_policy, source_seed
 from .model import DecisionModel, encode, load_tokenizer
-from .suite import ROOT, base_revision, digest, load_split, manifest, object_digest, source_hashes, write_json
+from .suite import (ROOT, SUITES_DATASET, SUITES_REVISION, base_revision, digest, load_split, manifest, object_digest,
+                    source_hashes, write_json)
+
+# The recipe that produced the published `jaredpalmer/kev-0.6b` preview (kev trial `v4-06b-hardened/00-trial-0`,
+# seeds 0-2, kev commit 6cfa03ab, from that trial's provenance.json). `--recipe kev-v4` refuses to start unless
+# every knob under "matched" agrees, and records the three deviations Hev cannot remove: Hev has no bf16 path,
+# runs on MPS rather than an H100, and cannot hold an eight-record forward, so it reaches the same effective
+# batch by accumulation. The fourth difference is the point of the experiment, not an accident: Hev's encoding
+# isolates option spans and shares their start positions, kev's published checkpoint does not.
+KEV_V4_RECIPE = {
+    "source": "kev runs/v4-06b-hardened/00-trial-0/provenance.json (kev commit 6cfa03ab, HEAD 20fa626)",
+    "published_checkpoint": "jaredpalmer/kev-0.6b",
+    "suite_sha256": "1b33e566d114f9eafeff55b36c221fadb2a4ae358a1b9cc68006e82c7cfad8f1",
+    "matched": {
+        "base": "Qwen/Qwen3-0.6B-Base",
+        "epochs": 2,
+        "lr": 2e-4,
+        "lora": 16,
+        "effective_batch": 8,
+        "ord_w": 0.0,
+        "p_none": 0.1,
+        "p_none_distract": 0.12,
+        "p_distract": 0.15,
+        "p_none_pair": 0.25,
+    },
+    "kev_only_knobs": {"perm_kl": 0.0, "anchor_w": 0.0, "head_dim": 256, "special_embeddings": False},
+}
 
 
 def question_loss(logits, question, device, ord_w=0.0):
@@ -30,6 +57,44 @@ def question_loss(logits, question, device, ord_w=0.0):
     return loss
 
 
+def reference_recipe_report(args, suite_sha256, device):
+    """Check the run against kev's published v4 recipe and list the deviations that remain. Raises on a mismatch."""
+    matched = {
+        "base": args.base,
+        "epochs": args.epochs,
+        "lr": args.lr,
+        "lora": args.lora,
+        "effective_batch": args.batch * args.accum,
+        "ord_w": args.ord_w,
+        "p_none": args.p_none,
+        "p_none_distract": args.p_none_distract,
+        "p_distract": args.p_distract,
+        "p_none_pair": args.p_none_pair,
+    }
+    differing = {key: {"kev": value, "hev": matched[key]} for key, value in KEV_V4_RECIPE["matched"].items()
+                 if matched[key] != value}
+    if differing:
+        raise ValueError(f"--recipe kev-v4 requires these knobs to match kev's published trial: {differing}")
+    if suite_sha256 != KEV_V4_RECIPE["suite_sha256"]:
+        raise ValueError("--recipe kev-v4 requires the decision-v4 suite kev trained on")
+    return {
+        "name": "kev-v4",
+        "reference": KEV_V4_RECIPE,
+        "matched": matched,
+        "accepted_deviations": [
+            {"knob": "precision", "kev": "bf16 autocast", "hev": "fp32",
+             "why": "Hev has no mixed-precision path; the float 4D mask is only known-good on eager fp32 on MPS"},
+            {"knob": "device", "kev": "NVIDIA H100 80GB (cuda)", "hev": device,
+             "why": "this is the hardware available; kernels, reductions and RNG all differ"},
+            {"knob": "microbatching", "kev": "batch 8, accum 1", "hev": f"batch {args.batch}, accum {args.accum}",
+             "why": "same effective batch of 8 records; MPS memory does not hold an eight-record forward"},
+            {"knob": "encoding", "kev": "plain packing, option_isolation off", "hev": "option-isolating mask, shared option start positions",
+             "why": "the object of study, not a deviation to remove"},
+        ],
+        "not_implemented_in_hev": KEV_V4_RECIPE["kev_only_knobs"],
+    }
+
+
 def accumulation_records(total, batch, accum, microbatch):
     start = (microbatch // accum) * accum * batch
     return min(accum * batch, total - start)
@@ -40,24 +105,38 @@ def validate_args(args):
         raise ValueError("epochs, lora, batch and accum must be positive")
     if args.lr <= 0 or args.ord_w < 0:
         raise ValueError("lr must be positive and ord-w must be nonnegative")
+    if not 0 <= args.p_none_pair <= 1:
+        raise ValueError("p-none-pair must be a probability")
+    if args.objective_records < 0:
+        raise ValueError("objective-records must be nonnegative")
     probabilities = (args.p_none, args.p_none_distract, args.p_distract)
     if min(probabilities) < 0 or sum(probabilities) > 1:
         raise ValueError("augmentation probabilities must be nonnegative and sum to at most one")
 
 
-def validate_training_records(records):
+def validate_training_records(records, trainable=TRAINABLE, eval_only=EVAL_ONLY):
+    """Refuse an eval-only source at either level, and refuse a record source the suite does not declare trainable.
+
+    Record sources are the policy unit: `_meta.source` is one of the suite's declared sources, while a question's
+    `src` is a finer task name inside it (`agnews_yn` inside agnews, `contrastive_return_window` inside v4's
+    `legacy_policy`). So the trainable check is on record sources and the eval-only refusal is on exact names at
+    both levels, which is what keeps a disguised mmlu question out of a training batch.
+    """
     if not records:
         raise ValueError("empty training set")
-    sources = {record["_meta"]["source"] for record in records}
-    sources.update(
+    record_sources = {record["_meta"]["source"] for record in records}
+    sources = record_sources | {
         question.get("src")
         for record in records
         for question in record.get("questions", {}).values()
         if question.get("src")
-    )
-    forbidden = sources & set(EVAL_ONLY)
+    }
+    forbidden = sources & set(eval_only)
     if forbidden:
         raise ValueError(f"training partition contains eval-only sources: {sorted(forbidden)}")
+    undeclared = record_sources - set(trainable)
+    if undeclared:
+        raise ValueError(f"training partition contains sources the suite does not declare trainable: {sorted(undeclared)}")
 
 
 def prepare_output(path):
@@ -115,6 +194,18 @@ def sync(device):
         torch.cuda.synchronize()
 
 
+def objective_probe(records, limit):
+    """Records for the fixed before/after objective: all of them, or a deterministic subset shared by every seed.
+
+    The objective is a loss-decrease gate, not a research metric, so on a large partition it is measured on a fixed
+    probe instead of every record. The order is by record id digest, so the probe does not depend on the seed, the
+    shuffle or the file order, and `training_metrics.json` records how many records went into it.
+    """
+    if not limit or limit >= len(records):
+        return list(records)
+    return sorted(records, key=lambda record: hashlib.sha256(str(record["_meta"]["id"]).encode()).hexdigest())[:limit]
+
+
 def fixed_objective(model, tokenizer, requests, ord_w):
     was_training = model.training
     model.eval()
@@ -165,15 +256,24 @@ def parser():
     ap.add_argument("--p-none", type=float, default=0.1)
     ap.add_argument("--p-none-distract", type=float, default=0.12)
     ap.add_argument("--p-distract", type=float, default=0.15)
+    ap.add_argument("--p-none-pair", type=float, default=0.0,
+                    help="fraction of records that additionally emit a none-present/none-absent minimal pair")
+    ap.add_argument("--objective-records", type=int, default=0,
+                    help="cap the fixed before/after objective at this many records (0 = the whole partition)")
+    ap.add_argument("--recipe", choices=["none", "kev-v4"], default="none",
+                    help="refuse to start unless the run matches a published reference recipe, and record the deviations")
     ap.add_argument("--require-loss-decrease", action="store_true")
     return ap
 
 
 def train(args, output):
     suite = Path(args.suite)
-    records = load_split(suite, "train")
-    validate_training_records(records)
+    partition = suite / "train.jsonl"
+    mirrored = not partition.exists()          # load_split fetches it from the pinned mirror and verifies the bytes
+    records = load_split(suite, "train", fetch=True)
     suite_manifest = manifest(suite)
+    trainable, eval_only = source_policy(suite_manifest)
+    validate_training_records(records, trainable, eval_only)
     revision = base_revision(suite, args.base)
     if not revision:
         raise ValueError("base model is not pinned by the suite manifest")
@@ -187,6 +287,17 @@ def train(args, output):
         "suite_sha256": suite_sha256,
         "base_revision": revision,
         "holdout_sources": suite_manifest.get("holdout_sources", []),
+        "source_policy": {"trainable": list(trainable), "eval_only": list(eval_only),
+                          "declared_by": "suite manifest" if suite_manifest.get("trainable_sources") is not None
+                          else "hev.data defaults"},
+        "train_partition": {
+            "path": str(partition),
+            "sha256": digest(partition),
+            "records": len(records),
+            "fetched_from_mirror": mirrored,
+            "mirror": {"dataset": SUITES_DATASET, "revision": SUITES_REVISION} if mirrored else None,
+        },
+        "recipe": reference_recipe_report(args, suite_sha256, device) if args.recipe == "kev-v4" else None,
         "objective": "record-mean cross-entropy plus optional normalized ranked probability score",
         "provenance": provenance,
     }
@@ -207,16 +318,18 @@ def train(args, output):
     total_steps = args.epochs * math.ceil(microbatches / args.accum)
     scheduler = make_scheduler(optimizer, args.lr, max(total_steps, 1))
 
-    before = fixed_objective(model, tokenizer, records, args.ord_w)
+    probe = objective_probe(records, args.objective_records)
+    before = fixed_objective(model, tokenizer, probe, args.ord_w)
     model.train()
     optimizer.zero_grad(set_to_none=True)
     sync(device)
     started = time.perf_counter()
     records_seen = questions_seen = forward_tokens = optimizer_steps = 0
+    forward_records = none_pair_records = 0
     peak_memory = peak_device_bytes(device)
     step_metrics = []
     group_loss = 0.0
-    group_records_seen = 0
+    group_forward_records = 0
 
     for epoch in range(args.epochs):
         order = list(records)
@@ -227,18 +340,23 @@ def train(args, output):
             materialized = []
             for request in chunk:
                 item_rng = random.Random(source_seed(args.seed, f"{epoch}:{request['_meta']['id']}"))
-                request = augment(
+                variants = [augment(
                     request,
                     item_rng,
                     p_none=args.p_none,
                     p_none_distract=args.p_none_distract,
                     p_distract=args.p_distract,
-                )
-                record = materialize(request)
-                packed = encode(tokenizer, record, strict=True)
-                materialized.append(record)
-                encoded.append(packed)
-                forward_tokens += len(packed["ids"])
+                )]
+                if args.p_none_pair > 0 and item_rng.random() < args.p_none_pair:
+                    pair = none_pair(request, item_rng)      # kev/train.py:170-171; [] when no Choice is eligible
+                    variants += pair
+                    none_pair_records += len(pair)
+                for variant in variants:
+                    record = materialize(variant)
+                    packed = encode(tokenizer, record, strict=True)
+                    materialized.append(record)
+                    encoded.append(packed)
+                    forward_tokens += len(packed["ids"])
             logits_batch = model.forward_batch(encoded)
             record_losses = []
             for logits, record in zip(logits_batch, materialized):
@@ -250,10 +368,13 @@ def train(args, output):
             loss_sum = torch.stack(record_losses).sum()
             if not torch.isfinite(loss_sum):
                 raise ValueError("non-finite training loss")
-            group_size = accumulation_records(len(order), args.batch, args.accum, microbatch)
+            # weight by source records in the accumulation group so none-pair siblings do not inflate a record's
+            # share of the gradient (kev/train.py, "group_records")
+            group_size = accumulation_records(len(order), args.batch, args.accum, microbatch) * (len(materialized) / len(chunk))
             (loss_sum / group_size).backward()
             records_seen += len(chunk)
-            group_records_seen += len(chunk)
+            forward_records += len(materialized)
+            group_forward_records += len(materialized)
             group_loss += loss_sum.detach().item()
             peak_memory = max(peak_memory, peak_device_bytes(device))
             final_microbatch = microbatch + 1 == microbatches
@@ -266,7 +387,7 @@ def train(args, output):
                 step_metrics.append({
                     "step": optimizer_steps,
                     "epoch": epoch,
-                    "objective": group_loss / group_records_seen,
+                    "objective": group_loss / group_forward_records,
                     "lr": scheduler.get_last_lr()[0],
                 })
                 print(
@@ -275,23 +396,26 @@ def train(args, output):
                     flush=True,
                 )
                 group_loss = 0.0
-                group_records_seen = 0
+                group_forward_records = 0
                 if device == "mps":
                     torch.mps.empty_cache()
 
     sync(device)
     training_seconds = time.perf_counter() - started
-    after = fixed_objective(model, tokenizer, records, args.ord_w)
+    after = fixed_objective(model, tokenizer, probe, args.ord_w)
     metrics = {
         "status": "success",
         "wall_seconds": training_seconds,
         "fixed_train_objective_before": before,
         "fixed_train_objective_after": after,
         "fixed_train_objective_delta": after - before,
+        "fixed_train_objective_records": len(probe),
         "loss_decrease_required": args.require_loss_decrease,
         "optimizer_steps": optimizer_steps,
         "step_metrics": step_metrics,
         "records_seen": records_seen,
+        "forward_records": forward_records,
+        "none_pair_records": none_pair_records,
         "questions_seen": questions_seen,
         "requested_records": args.epochs * len(records),
         "forward_tokens": forward_tokens,

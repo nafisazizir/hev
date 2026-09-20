@@ -21,6 +21,8 @@ from .api import SystemOneRequest, to_record
 # Source policy inherited from kev. A source is trainable or eval-only, never both. MMLU is a knowledge
 # probe and stays eval-only permanently. Training must refuse eval-only sources. legacy_holdout and
 # composition_holdout are the transfer-v4 held-out policy families; they are appended (order is stable).
+# These two tuples are the fallback for a suite that declares no policy of its own (smoke-v1); every frozen
+# suite since decision-v2 declares its own lists, which is what source_policy() reads.
 TRAINABLE = ("banking77", "boolq", "agnews", "mnli", "sst5", "yelp", "trec", "dbpedia14", "amazon", "imdb")
 EVAL_ONLY = ("mmlu", "emotion", "tweet_offensive", "qnli", "paws", "sciq", "legacy_holdout", "composition_holdout")
 
@@ -33,6 +35,24 @@ NONE_OPTIONS = [("other", "None of the above"), ("other", "A reason that fits no
                 ("other", "An answer not covered by the other options"), ("no_match", "No option matches")]
 DISTRACTORS = {"weather": "Bad weather caused it", "purple": "The colour purple", "pancakes": "A recipe for pancakes",
                "taxes": "Unrelated: quarterly tax filing"}
+
+
+def source_policy(suite_manifest):
+    """The suite's own (trainable, eval-only) source lists, falling back to the tuples above when it declares none.
+
+    Policy belongs to the suite, not to this module: decision-v2 trains on `contrastive` while decision-v4 makes it
+    eval-only and instead trains on the `legacy_policy` and `compositional` arms, which are the two sources kev's
+    published 0.6B learned its policy questions from. An empty declared list means "nothing is trainable here" and
+    must not fall back, so the check is against None. A source may never appear in both lists.
+    """
+    trainable = suite_manifest.get("trainable_sources")
+    eval_only = suite_manifest.get("eval_only_sources")
+    trainable = tuple(TRAINABLE if trainable is None else trainable)
+    eval_only = tuple(EVAL_ONLY if eval_only is None else eval_only)
+    both = set(trainable) & set(eval_only)
+    if both:
+        raise ValueError(f"suite declares sources as both trainable and eval-only: {sorted(both)}")
+    return trainable, eval_only
 
 
 def source_seed(seed, source):

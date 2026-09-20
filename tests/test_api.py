@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from hev.api import SystemOneRequest, choice_confidence, render, score_confidence, to_answers, to_record
-from hev.data import EVAL_ONLY, TRAINABLE, augment, materialize, none_pair, permute_choice
-from hev.suite import load_split, manifest
+from hev.data import EVAL_ONLY, TRAINABLE, augment, materialize, none_pair, permute_choice, source_policy
+from hev.suite import MIRROR_PATHS, SUITES_DATASET, SUITES_REVISION, load_split, manifest, mirror_path
 import random
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,14 +59,17 @@ def test_policy_is_disjoint():
 
 # decision-v4/train.jsonl is the one partition kev keeps only on its Hub mirror (jaredpalmer/kev-suites); its manifest
 # entry is real but the file is deliberately not in this repo (evals/README.md). Nothing else may be absent.
-EXPECTED_ABSENT = {"decision-v4": {"train.jsonl"}}
+# Partitions kev keeps out of git and mirrors on the Hub. Absent on a fresh clone; present once a training run
+# has fetched one. Either state is valid, so the test asserts the rule rather than the current disk.
+MIRRORED_PARTITIONS = {"decision-v4": {"train.jsonl"}}
 
 
 def test_suites_load_and_verify():
     """Every bundled suite must checksum-verify, and eval-only sources must never appear in a train split.
 
-    Each partition listed in a manifest is either present on disk and verified through load_split, or absent and
-    listed in EXPECTED_ABSENT. load_split itself must still raise on a missing file.
+    Each partition listed in a manifest is either present on disk and verified through load_split, or absent
+    because it is mirrored on the Hub. A missing partition must still raise unless the caller asks to fetch it,
+    so the default read path stays offline.
     """
     absent = {}
     for suite in sorted((ROOT / "evals").iterdir()):
@@ -83,12 +86,16 @@ def test_suites_load_and_verify():
             recs = load_split(suite, split)
             assert len(recs) == m["files"][f"{split}.jsonl"]["records"]
             if split == "train":
-                srcs = {q["src"] for r in recs for q in r["questions"].values()}
-                assert not srcs & set(EVAL_ONLY), (suite.name, srcs & set(EVAL_ONLY))
+                trainable, eval_only = source_policy(m)
+                record_srcs = {r["_meta"]["source"] for r in recs}
+                srcs = record_srcs | {q["src"] for r in recs for q in r["questions"].values()}
+                assert not srcs & set(eval_only), (suite.name, srcs & set(eval_only))
+                assert record_srcs <= set(trainable), (suite.name, record_srcs - set(trainable))
         assert (suite / "test.jsonl").exists(), suite.name
         with pytest.raises(ValueError):
             load_split(suite, "test")
-    assert absent == EXPECTED_ABSENT, absent
+    assert all(files <= MIRRORED_PARTITIONS.get(name, set()) for name, files in absent.items()), absent
+    assert set(MIRRORED_PARTITIONS) <= set(MIRROR_PATHS), "a mirrored partition needs a Hub mirror path"
 
 
 def test_materialize_matches_serving_path():
@@ -115,3 +122,25 @@ def test_augment_and_pairs_keep_labels_consistent():
         p, perms = permute_choice(r, rng)
         for qid, keys in perms.items():
             assert sorted(keys) == sorted(r["questions"][qid]["criteria"])
+
+
+def test_mirrored_partitions_are_opt_in_and_addressed_explicitly(tmp_path):
+    """A missing partition must not reach the network unless the caller asks, and only for a mirrored suite."""
+    suite = tmp_path / "decision-v4"
+    suite.mkdir()
+    (suite / "manifest.json").write_text(json.dumps({"files": {"train.jsonl": {"sha256": "0" * 64, "records": 1}}}))
+    with pytest.raises((FileNotFoundError, OSError)):
+        load_split(suite, "train")                      # fetch is off by default: offline stays offline
+    assert mirror_path(suite, "train.jsonl") == "v4/decision-v4/train.jsonl"
+    with pytest.raises(FileNotFoundError, match="no Hub mirror entry"):
+        mirror_path(tmp_path / "decision-v9", "train.jsonl")
+    assert len(SUITES_REVISION) == 40 and SUITES_DATASET == "jaredpalmer/kev-suites"
+    assert set(MIRROR_PATHS) == {"decision-v4", "transfer-v4"}
+
+
+def test_locked_test_partition_is_never_fetched(tmp_path):
+    suite = tmp_path / "decision-v4"
+    suite.mkdir()
+    (suite / "manifest.json").write_text(json.dumps({"files": {"test.jsonl": {"sha256": "0" * 64, "records": 1}}}))
+    with pytest.raises((FileNotFoundError, OSError)):
+        load_split(suite, "test", allow_test=True, fetch=True)

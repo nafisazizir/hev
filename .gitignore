@@ -18,6 +18,13 @@ runs/*/*
 *.pt
 *.bin
 
+# training partitions too large for git: fetched from the pinned Hub mirror and checksummed on use
+evals/*/train.jsonl
+!evals/decision-v2/train.jsonl
+!evals/smoke-v1/train.jsonl
+!evals/transfer-v2/train.jsonl
+!evals/transfer-v4/train.jsonl
+
 # hf / datasets caches
 .cache/
 hf_cache/

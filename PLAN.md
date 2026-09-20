@@ -77,7 +77,19 @@ Exit met by the immutable [aggregate](runs/m4-released-v4-r2/result.json). The p
 
 Two earlier aggregate attempts are retained as failures and must never be reused. `runs/m4-released-v4` stopped because the aggregate validated each run's training suite hash instead of the suite actually evaluated, which a cross-suite Hev run correctly reports as decision-v2. `runs/m4-released-v4-r1` stopped because the evaluator did not record the scored kev checkpoint's architecture flags, so the artifact could not show that kev ran with `option_isolation` false. Both were code faults, not model results. The kev evaluation was then repeated as `runs/m4-kev-0.6b-v4-r1` with the flags recorded; it reproduced `runs/m4-kev-0.6b-v4` exactly, including every permutation statistic, and the first kev run is retained.
 
-Step 2 (separate milestone, not started): retrain Hev on decision-v4 with kev's v4 recipe, three seeds, so the comparison controls training data.
+Step 2 is now M4b.
+
+### M4b. Controlled retrain on decision-v4  (started 2026-09-20)
+
+Step 2 of the controlled comparison: train Hev's PointerHead on kev's own training partition under kev's published v4 recipe, three predeclared seeds, so the D14 comparison no longer confounds architecture with training data. Protocol fixed in [D15](docs/DECISIONS.md). Precision and hardware still differ and always will on this machine, so this removes one confound, not all of them.
+
+- [x] Fetch `decision-v4/train.jsonl` (10,896 records, sha256 `cb55b79e…`) from kev's pinned Hub mirror, verified against the manifest, git-ignored (`hev/suite.py`, opt-in `fetch=True`).
+- [x] Read the trainable/eval-only policy from the suite manifest so v4's `legacy_policy` and `compositional` arms may train while `contrastive` may not, without changing decision-v2's policy (`hev/data.py::source_policy`).
+- [x] Wire kev's none-pair minimal-pair augmentation into the loop with kev's accumulation weighting (`--p-none-pair`).
+- [x] Record the deviations Hev cannot remove instead of pretending to match: `--recipe kev-v4` matches every shared knob or refuses to start, and writes precision, hardware, micro-batching and encoding differences into `training_config.json`.
+- [ ] Train seeds 0, 1 and 2 (`runs/m4b-pointer-v4-s0/-s1/-s2`), 2,724 optimizer steps each.
+- [ ] Evaluate each seed on decision-v4 and transfer-v4 development under D13's evaluation settings (`runs/m4b-eval-v4-s0/-s1/-s2`).
+- [ ] Three-seed aggregate against `runs/m4-kev-0.6b-v4-r1` with D13's populations and margins (`runs/m4b-v4-three-seed`), then RESULTS.md, README, KEV.md and the model card.
 
 ### M5. Beyond the first result (pick after M4)
 

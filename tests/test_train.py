@@ -1,14 +1,20 @@
 """Offline regression tests for Hev training objectives and safeguards."""
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 import torch.nn.functional as F
 
-from hev.data import EVAL_ONLY
+from hev.data import EVAL_ONLY, source_policy
 from hev.model import DecisionModel
 from hev.suite import object_digest, source_hashes
-from hev.train import accumulation_records, make_scheduler, prepare_output, question_loss, runtime_provenance, validate_args, validate_training_records
+from hev.train import (KEV_V4_RECIPE, accumulation_records, make_scheduler, objective_probe, prepare_output,
+                       question_loss, reference_recipe_report, runtime_provenance, validate_args,
+                       validate_training_records)
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def args(**overrides):
@@ -22,6 +28,9 @@ def args(**overrides):
         "p_none": 0.1,
         "p_none_distract": 0.12,
         "p_distract": 0.15,
+        "p_none_pair": 0.0,
+        "objective_records": 0,
+        "base": "Qwen/Qwen3-0.6B-Base",
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -78,9 +87,73 @@ def test_training_source_policy():
     disguised = {"_meta": {"source": "boolq"}, "questions": {"q": {"src": EVAL_ONLY[0]}}}
     with pytest.raises(ValueError, match="eval-only"):
         validate_training_records([disguised])
+    with pytest.raises(ValueError, match="does not declare trainable"):
+        validate_training_records([{"_meta": {"source": "legacy_policy"}}])
+    # a question's src is a task name inside its record's source, not a source of its own
+    validate_training_records([{"_meta": {"source": "agnews"}, "questions": {"q": {"src": "agnews_yn"}}}])
+
+
+def test_suite_manifest_governs_which_sources_may_train():
+    v4 = json.loads((ROOT / "evals" / "decision-v4" / "manifest.json").read_text())
+    trainable, eval_only = source_policy(v4)
+    assert {"legacy_policy", "compositional"} <= set(trainable)
+    assert "contrastive" in eval_only and "contrastive" not in trainable
+    policy_records = [{"_meta": {"source": "legacy_policy"}, "questions": {"q": {"src": "contrastive_return_window"}}},
+                      {"_meta": {"source": "compositional"}, "questions": {"q": {"src": "composition_nested_or"}}}]
+    validate_training_records(policy_records, trainable, eval_only)
+    with pytest.raises(ValueError, match="eval-only"):
+        validate_training_records([{"_meta": {"source": "mmlu"}}], trainable, eval_only)
+
+    # a transfer suite declares an empty trainable list; that means nothing may train, not "fall back to defaults"
+    transfer = json.loads((ROOT / "evals" / "transfer-v4" / "manifest.json").read_text())
+    assert source_policy(transfer)[0] == ()
+    # a suite that declares no policy at all keeps the inherited defaults
+    smoke = json.loads((ROOT / "evals" / "smoke-v1" / "manifest.json").read_text())
+    assert "banking77" in source_policy(smoke)[0]
+    with pytest.raises(ValueError, match="both trainable and eval-only"):
+        source_policy({"trainable_sources": ["boolq"], "eval_only_sources": ["boolq"]})
+
+
+def test_minimal_pair_siblings_do_not_inflate_a_records_share_of_the_gradient():
+    """A record that emits none-pair siblings must not get three times the gradient weight of one that does not."""
+    weights = []
+    for variants_per_record in (1, 3):
+        weight = torch.tensor(1.0, requires_grad=True)
+        for microbatch in range(8):                      # one accumulation group: 8 records, batch 1, accum 8
+            loss_sum = sum(weight * 2.0 for _ in range(variants_per_record))
+            group = accumulation_records(8, 1, 8, microbatch) * variants_per_record
+            (loss_sum / group).backward()
+        weights.append(weight.grad.item())
+    assert weights[0] == pytest.approx(weights[1])
+
+
+def test_kev_v4_recipe_guard_matches_knobs_and_names_the_deviations():
+    suite_hash = KEV_V4_RECIPE["suite_sha256"]
+    matched = args(epochs=2, lr=2e-4, lora=16, batch=1, accum=8, ord_w=0.0, p_none_pair=0.25)
+    report = reference_recipe_report(matched, suite_hash, "mps")
+    assert report["matched"]["effective_batch"] == 8 and report["matched"]["p_none_pair"] == 0.25
+    deviations = {item["knob"]: item for item in report["accepted_deviations"]}
+    assert set(deviations) == {"precision", "device", "microbatching", "encoding"}
+    assert deviations["precision"]["kev"] == "bf16 autocast" and deviations["precision"]["hev"] == "fp32"
+    assert deviations["device"]["hev"] == "mps"
+    with pytest.raises(ValueError, match="match kev's published trial"):
+        reference_recipe_report(args(epochs=2, lr=2e-4, p_none_pair=0.0), suite_hash, "mps")
+    with pytest.raises(ValueError, match="requires the decision-v4 suite"):
+        reference_recipe_report(matched, "0" * 64, "mps")
+
+
+def test_objective_probe_is_deterministic_and_independent_of_order():
+    records = [{"_meta": {"id": f"r{i}"}} for i in range(50)]
+    probe = objective_probe(records, 8)
+    assert len(probe) == 8
+    assert probe == objective_probe(list(reversed(records)), 8)
+    assert objective_probe(records, 0) == records and objective_probe(records, 100) == records
 
 
 @pytest.mark.parametrize("bad", [
+    {"p_none_pair": 1.5},
+    {"p_none_pair": -0.1},
+    {"objective_records": -1},
     {"epochs": 0},
     {"lora": 0},
     {"batch": 0},
