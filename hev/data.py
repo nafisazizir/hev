@@ -19,9 +19,10 @@ import random
 from .api import SystemOneRequest, to_record
 
 # Source policy inherited from kev. A source is trainable or eval-only, never both. MMLU is a knowledge
-# probe and stays eval-only permanently. Training must refuse eval-only sources.
+# probe and stays eval-only permanently. Training must refuse eval-only sources. legacy_holdout and
+# composition_holdout are the transfer-v4 held-out policy families; they are appended (order is stable).
 TRAINABLE = ("banking77", "boolq", "agnews", "mnli", "sst5", "yelp", "trec", "dbpedia14", "amazon", "imdb")
-EVAL_ONLY = ("mmlu", "emotion", "tweet_offensive", "qnli", "paws", "sciq")
+EVAL_ONLY = ("mmlu", "emotion", "tweet_offensive", "qnli", "paws", "sciq", "legacy_holdout", "composition_holdout")
 
 # "None of the above" must appear both as the correct answer and as a wrong alternative, with varied
 # wording, or the model learns the wording rather than the evidence.

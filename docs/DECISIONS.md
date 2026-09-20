@@ -89,3 +89,39 @@ Prepare `v0.1.0` for open source without opening the locked test. The contributi
 Publish both predeclared PointerHead checkpoints as separate `seed-0` and `seed-1` revisions in one future Hub repository. Do not select the higher-accuracy seed, publish SetHead as the default, or use a locked-test result to market the preview. Keep weights out of git; require successful training/evaluation status and exact provenance agreement before upload.
 
 Keep detailed coding-agent instructions under `.devin/agent-notes/`, with only a standard root pointer. Credit TypeSafe, Archer Hume, Jared Palmer and kev, Qwen, dataset contributors, and Devin/Cognition explicitly. No affiliation or endorsement is implied.
+
+## D13. M4 protocol: released kev-0.6b versus Hev on v4 development  (2026-09-20, predeclared before any run)
+
+**Why.** kev moved 62 commits past the pinned cc954f2 and now ships its own `option_isolation` flag and a published 0.6B research preview trained on decision-v4. Hev's checked-in kev comparison is unpaired (kev's v2 artifacts have no rows) and uses mismatched order protocols. M4 step 1 is evaluation only: the same items, three checkpoints, one evaluator. It is a same-items, different-training comparison and must not be read as an architecture claim. See [KEV.md](KEV.md).
+
+**Models.** Hev PointerHead seed 0 (`runs/m2-pointer-s0`) and seed 1 (`runs/m3-pointer-s1`), both trained on decision-v2 (3,432 records). Released `jaredpalmer/kev-0.6b` at Hub snapshot `83e05fabf7ef08e343bb4daf144e08777f99713d`, kev trial `v4-06b-hardened/00-trial-0`, seed 0 of 3, trained on decision-v4 (10,896 records, minimal pairs on, bf16 H100). SetHead is excluded because it is not a release candidate. No training in this step.
+
+**Suites.** `evals/decision-v4` (manifest SHA-256 `1b33e566d114f9eafeff55b36c221fadb2a4ae358a1b9cc68006e82c7cfad8f1`) calibration and development; `evals/transfer-v4` (`31677c2256b406222e7d94ffdc0a02a70ce05746b9efe307876024c4e77291d1`) development. No test access. Copied byte-for-byte from kev HEAD 20fa626.
+
+**Procedure.** `hev.evaluate` for all three, device mps, fp32, eager attention, evaluation seed 1, six deterministic orders, 10,000 bootstrap draws, temperature fit once per model on decision-v4 calibration clean rows and applied unchanged to transfer. kev is loaded through the vendored kev inference path (`hev/kev_model.py`, kev commit 20fa626) with `--checkpoint-kind kev`; Hev runs use `--allow-cross-suite` because their training suite is decision-v2, and the flag use is recorded in each `result.json`. Outputs: `runs/m4-kev-0.6b-v4`, `runs/m4-hev-pointer-s0-v4`, `runs/m4-hev-pointer-s1-v4`; aggregate `runs/m4-released-v4`. All immutable; failures are kept and never reused.
+
+**Predictor sanity gate.** The kev re-evaluation must reproduce the checkpoint's own development accuracy recorded in the Hub `result.json` (clean 0.805 decision, 0.598 transfer) within 1.0 percentage point each under the same clean-row definition. If it does not, the predictor is presumed wrong: the artifact is kept as a failure, the discrepancy is explained in RESULTS.md, and no comparison is claimed until it is resolved.
+
+**Primary and secondary populations.** Primary: the ten public sources of decision-v4 development (banking77, boolq, agnews, mnli, sst5, yelp, trec, dbpedia14, amazon, imdb) and the six public eval-only sources of transfer-v4 development. Both models trained on those decision sources and neither trained on the transfer sources. Secondary, reported separately and flagged: the policy arms (`legacy_policy`, `compositional`, `legacy_holdout`, `composition_holdout`), which kev trained on or was designed for and Hev never saw.
+
+**Statistics.** Paired on identical rows, source-stratified, `(source, group_id)`-clustered percentile bootstrap, 10,000 draws, seed 20260920. Deltas are kev minus Hev for each Hev seed separately; the two-seed mean is reported as the mean of the two point deltas with both intervals, never as a pooled interval. Decision headline metrics are clean micro accuracy and calibrated NLL, ECE, Brier; transfer headline metrics are accuracy and raw NLL, Brier. Per-source, per-task, per-type, none-option and contrastive-pair tables are descriptive.
+
+**Decision rules.** Margins are fixed now: 2.0 points on decision accuracy, 3.0 points on transfer accuracy. "Equivalent" requires the 90% paired interval to lie entirely inside the margin (two one-sided tests at 5%). "kev better" or "Hev better" requires the 95% interval to exclude zero. Anything else is inconclusive. Rules apply to the primary population; secondary results carry no verdict.
+
+**Order study.** All three checkpoints get the exhaustive six-order protocol. Hev is expected to show zero flips and p90 spread at most 1e-4 (a mechanism check, failure is a bug). kev's flip rate and spread are reported as measured; this is the first exhaustive-protocol order measurement of a released kev checkpoint. A nonzero kev flip rate is not evidence about Jev.
+
+**What may be claimed.** Accuracy and calibration differences between a released kev checkpoint and the Hev checkpoints on identical items, with intervals, and the order behaviour of each. What may not: any attribution of a difference to architecture rather than training data, any locked-test statement, or any seed-selection.
+
+### D13 addendum: contamination verified before any M4 result existed  (2026-09-20)
+
+Both models' training rows were checked against every M4 evaluation split, by exact state digest and by exact record digest with `_meta` stripped. Hev's training partition is `evals/decision-v2/train.jsonl` (3,432 records). kev's is decision-v4 `train.jsonl` (10,896 records), fetched from the Hub mirror `jaredpalmer/kev-suites` at pinned revision `a3318ddc1f630c5673232efacd8123a84de3f480` and verified against the decision-v4 manifest SHA-256; it was not copied into `evals/`, so decision-v4 keeps no local train partition.
+
+| Evaluation split | States shared with Hev's training rows | States shared with kev's training rows |
+|---|---:|---:|
+| decision-v4 development (1,204) | 0 | 0 |
+| transfer-v4 development (764) | 0 | 0 |
+| decision-v4 calibration (728) | 1 | 0 |
+
+Neither model has seen any headline evaluation row. The single decision-v4 calibration state shared with Hev's training data affects only temperature fitting, a one-parameter fit, and is recorded rather than excluded so the two models keep an identical calibration population.
+
+The two training sets share 1,303 states, as expected from the common public pools. That is a fairness note, not contamination: both models trained on overlapping public material and kev trained on roughly three times as many records. It is one more reason M4 step 1 cannot attribute any difference to architecture.

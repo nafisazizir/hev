@@ -1,4 +1,10 @@
-"""Evaluate Hev checkpoints on frozen calibration, development and transfer suites."""
+"""Evaluate Hev checkpoints on frozen calibration, development and transfer suites.
+
+Default: a local Hev run is scored on the suite it was trained on and results land in the run directory.
+Two explicit relaxations exist, each recorded in result.json (never silent):
+  --allow-cross-suite  evaluate a run on a different suite and/or under changed source; requires --out.
+  --checkpoint-kind kev  score an external kev checkpoint through hev.kev.KevPredictor; requires --out.
+"""
 import argparse
 import json
 import math
@@ -12,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .data import EVAL_ONLY, NONE_OPTIONS, TRAINABLE, materialize
+from .data import NONE_OPTIONS, TRAINABLE, materialize
 from .model import DecisionModel, encode, load_tokenizer
 from .suite import base_revision, digest, load_split, manifest, object_digest, source_hashes, write_json
 
@@ -212,27 +218,39 @@ def sync(device):
         torch.cuda.synchronize()
 
 
-def output_paths(run, include_transfer=True, include_ablation=False):
-    run = Path(run)
+def output_paths(directory, include_transfer=True, include_ablation=False):
+    directory = Path(directory)
     paths = {
-        "result": run / "result.json",
-        "calibration": run / "calibration_rows.json",
-        "decision": run / "decision_rows.json",
+        "result": directory / "result.json",
+        "calibration": directory / "calibration_rows.json",
+        "decision": directory / "decision_rows.json",
     }
     if include_transfer:
-        paths["transfer"] = run / "transfer_rows.json"
+        paths["transfer"] = directory / "transfer_rows.json"
     if include_ablation:
-        paths["level_zero"] = run / "level_zero_rows.json"
+        paths["level_zero"] = directory / "level_zero_rows.json"
     return paths
 
 
-def prepare_outputs(run, include_transfer=True, include_ablation=False):
-    paths = output_paths(run, include_transfer, include_ablation)
-    protected = list(paths.values()) + [Path(run) / "eval.json", Path(run) / "eval_rows.json"]
+def prepare_outputs(directory, include_transfer=True, include_ablation=False):
+    directory = Path(directory)
+    paths = output_paths(directory, include_transfer, include_ablation)
+    protected = list(paths.values()) + [directory / "eval.json", directory / "eval_rows.json", directory / "evaluation_failure.json"]
     existing = [str(path) for path in protected if path.exists()]
     if existing:
         raise FileExistsError(f"refusing to overwrite evaluation artifacts: {existing}")
     return paths
+
+
+def resolve_output_dir(run, out):
+    """Without --out, outputs go into the run directory as before. With --out, the directory must be new."""
+    if out is None:
+        return Path(run)
+    out = Path(out)
+    if out.exists():
+        raise FileExistsError(f"refusing to write into an existing output directory: {out}")
+    out.mkdir(parents=True)
+    return out
 
 
 class LocalPredictor:
@@ -659,10 +677,15 @@ def validate_transfer_suite(training_suite, transfer_suite, base, revision):
     records = load_split(transfer_suite, "development")
     sources = {record["_meta"]["source"] for record in records}
     tasks = {question.get("src") for record in records for question in record["questions"].values() if question.get("src")}
+    trainable = set(TRAINABLE)
     declared = set(transfer_manifest.get("eval_only_sources", []))
-    forbidden = (sources & set(TRAINABLE)) | (tasks & set(TRAINABLE))
-    unknown = sources - set(EVAL_ONLY) - {"contrastive"}
+    # Admission rule: the transfer manifest declares the source eval-only AND hev.data never trains it.
+    # Membership in EVAL_ONLY is deliberately not required here, so a holdout family introduced by a newer
+    # suite version is accepted once its manifest declares it; training refusal is EVAL_ONLY's job.
+    admissible = declared - trainable
+    forbidden = (sources & trainable) | (tasks & trainable)
     undeclared = sources - declared
+    unknown = sources - admissible
     if forbidden or unknown or undeclared:
         raise ValueError(f"transfer suite contains non-eval-only sources: {sorted(forbidden | unknown | undeclared)}")
     if base_revision(training_suite, base) != revision or training_manifest.get("eval_only"):
@@ -681,9 +704,13 @@ def write_atomic(path, value):
 
 def parser():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--run", required=True)
+    ap.add_argument("--run", required=True, help="Hev run directory, or for --checkpoint-kind kev a local dir / hf:// reference")
     ap.add_argument("--suite", required=True)
     ap.add_argument("--transfer")
+    ap.add_argument("--out", help="fresh output directory (must not exist); default writes into the run directory")
+    ap.add_argument("--checkpoint-kind", choices=["hev", "kev"], default="hev")
+    ap.add_argument("--allow-cross-suite", action="store_true",
+                    help="permit a suite/source mismatch with the checkpoint; recorded in result.json; requires --out")
     ap.add_argument("--device", choices=["cpu", "mps", "cuda"])
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--permutations", type=int, default=6)
@@ -692,14 +719,83 @@ def parser():
     return ap
 
 
-def evaluate(args):
+def validate_args(args):
+    """Flag consistency, checked before any output directory or model is touched."""
     if args.permutations < 2 or args.bootstrap_samples < 1:
         raise ValueError("permutations must be at least two and bootstrap samples must be positive")
-    run = Path(args.run)
-    paths = prepare_outputs(run, bool(args.transfer), args.level_zero_ablation)
-    failure = run / "evaluation_failure.json"
-    if failure.exists():
-        raise FileExistsError(f"refusing to overwrite evaluation failure artifact: {failure}")
+    if args.checkpoint_kind == "kev" and args.out is None:
+        raise ValueError("--checkpoint-kind kev requires --out; an external checkpoint has no run directory to write into")
+    if args.checkpoint_kind == "kev" and args.level_zero_ablation:
+        raise ValueError("--level-zero-ablation needs a Hev PointerHead level embedding; kev checkpoints have none")
+    if args.allow_cross_suite and args.out is None:
+        raise ValueError("--allow-cross-suite requires --out; cross-suite results are never written into the run directory")
+
+
+def load_predictor(kind, reference, device):
+    if kind == "kev":
+        from .kev import KevPredictor  # lazy: only external checkpoints need the vendored kev stack
+        return KevPredictor(reference, device)
+    return LocalPredictor(Path(reference), device)
+
+
+def changed_files(recorded, current):
+    return sorted(name for name in set(recorded) | set(current) if recorded.get(name) != current.get(name))
+
+
+def hev_gates(run, predictor, current_sources, allow_cross_suite):
+    """Attribution gates for a local Hev run.
+
+    Always enforced: training_config self-hash, checkpoint/config hash agreement, checkpoint/config provenance
+    agreement. Relaxed only by --allow-cross-suite: recorded training-time source hashes must equal the current
+    hev.suite.source_hashes(). Returns (training_config, training_metrics, provenance)."""
+    training_config = json.loads((run / "training_config.json").read_text())
+    training_metrics = json.loads((run / "training_metrics.json").read_text())
+    expected_config_hash = object_digest({key: value for key, value in training_config.items() if key != "config_sha256"})
+    if training_config.get("config_sha256") != expected_config_hash:
+        raise ValueError("training config hash mismatch")
+    if predictor.metadata.get("training_config_sha256") != expected_config_hash:
+        raise ValueError("checkpoint and training config hashes differ")
+    recorded_sources = training_config.get("provenance", {}).get("source_hashes")
+    if recorded_sources != predictor.metadata.get("provenance", {}).get("source_hashes"):
+        raise ValueError("checkpoint and training provenance differ")
+    changed = changed_files(recorded_sources or {}, current_sources)
+    if changed and not allow_cross_suite:
+        raise ValueError("source changed after training; result cannot be attributed to this checkpoint")
+    provenance = {
+        "kind": "hev",
+        "gates": {
+            "training_config": "enforced",
+            "source_hashes": "relaxed by --allow-cross-suite" if allow_cross_suite else "enforced",
+        },
+        "training_source_hashes": recorded_sources,
+        "evaluation_source_hashes": current_sources,
+        "source_hashes_match": not changed,
+        "changed_files": changed,
+    }
+    return training_config, training_metrics, provenance
+
+
+def kev_provenance(predictor):
+    metadata = predictor.metadata
+    return {
+        "kind": "kev",
+        "gates": {
+            "training_config": "not applicable: external checkpoint",
+            "source_hashes": "not applicable: external checkpoint",
+        },
+        "checkpoint": metadata.get("checkpoint"),
+        "kev_source": metadata.get("kev_source"),
+        "training_args": metadata.get("training_args"),
+    }
+
+
+def evaluate(args):
+    validate_args(args)
+    kind = args.checkpoint_kind
+    run = Path(args.run) if kind == "hev" else None
+    out = resolve_output_dir(args.run, args.out)
+    paths = prepare_outputs(out, bool(args.transfer), args.level_zero_ablation)
+    failure = out / "evaluation_failure.json"
     try:
         suite = Path(args.suite)
         suite_sha256 = digest(suite / "manifest.json")
@@ -710,29 +806,32 @@ def evaluate(args):
             torch.backends.cudnn.allow_tf32 = False
             torch.backends.cuda.enable_flash_sdp(False)
             torch.backends.cuda.enable_mem_efficient_sdp(False)
-        predictor = LocalPredictor(run, device)
-        if predictor.metadata["suite_sha256"] != suite_sha256:
+        predictor = load_predictor(kind, args.run, device)
+        training_suite_sha256 = predictor.metadata.get("suite_sha256")
+        if training_suite_sha256 != suite_sha256 and not args.allow_cross_suite:
             raise ValueError("checkpoint and training suite hashes differ")
-        training_config = json.loads((run / "training_config.json").read_text())
-        training_metrics = json.loads((run / "training_metrics.json").read_text())
-        expected_config_hash = object_digest({key: value for key, value in training_config.items() if key != "config_sha256"})
-        if training_config.get("config_sha256") != expected_config_hash:
-            raise ValueError("training config hash mismatch")
-        if predictor.metadata.get("training_config_sha256") != expected_config_hash:
-            raise ValueError("checkpoint and training config hashes differ")
-        recorded_sources = training_config.get("provenance", {}).get("source_hashes")
-        if recorded_sources != predictor.metadata.get("provenance", {}).get("source_hashes"):
-            raise ValueError("checkpoint and training provenance differ")
         current_sources = source_hashes()
-        if recorded_sources != current_sources:
-            raise ValueError("source changed after training; result cannot be attributed to this checkpoint")
+        if kind == "hev":
+            training_config, training_metrics, provenance = hev_gates(run, predictor, current_sources, args.allow_cross_suite)
+            head = predictor.metadata["readout"]["head_kind"]
+        else:
+            training_config = training_metrics = None
+            provenance = kev_provenance(predictor)
+            head = "kev"
+        cross_suite = {
+            "training_suite_sha256": training_suite_sha256,
+            "evaluation_suite_sha256": suite_sha256,
+            "transfer_suite_sha256": transfer_sha256,
+            "suite_differs": training_suite_sha256 != suite_sha256,
+            "allowed_by_flag": True,
+        } if args.allow_cross_suite else None
         calibration = load_split(suite, "calibration")
         development = load_split(suite, "development")
         calibration_rows, _ = predict_rows(calibration, predictor)
         temperature_fit = fit_temperature(calibration_rows)
         temperature = temperature_fit["temperature"]
         decision_rows, decision_latencies = predict_rows(development, predictor)
-        transfer_records = validate_transfer_suite(suite, args.transfer, predictor.metadata["base"], predictor.metadata["base_revision"]) if args.transfer else None
+        transfer_records = validate_transfer_suite(suite, args.transfer, predictor.metadata.get("base"), predictor.metadata.get("base_revision")) if args.transfer else None
         transfer_rows, transfer_latencies = predict_rows(transfer_records, predictor) if transfer_records is not None else (None, None)
         decision = evaluation_report(development, decision_rows, decision_latencies, predictor, temperature,
                                      args.seed, args.permutations, args.bootstrap_samples)
@@ -752,20 +851,26 @@ def evaluate(args):
         if zero_rows is not None:
             write_json(paths["level_zero"], zero_rows)
         artifact_hashes = {
-            name: {"path": str(path.relative_to(run)), "sha256": digest(path),
+            name: {"path": str(path.relative_to(out)), "sha256": digest(path),
                    "rows": len(json.loads(path.read_text()))}
             for name, path in paths.items() if name != "result"
         }
         result = {
-            "schema_version": 1,
+            "schema_version": 2,
             "status": "success",
-            "run": str(run),
+            "run": str(run) if run is not None else args.run,
+            "checkpoint_kind": kind,
+            "output_dir": str(out),
             "test_evaluated": False,
-            "head": predictor.metadata["readout"]["head_kind"],
-            "base": predictor.metadata["base"],
-            "base_revision": predictor.metadata["base_revision"],
-            "training_suite_sha256": suite_sha256,
+            "head": head,
+            "base": predictor.metadata.get("base"),
+            "base_revision": predictor.metadata.get("base_revision"),
+            "training_suite_sha256": training_suite_sha256,
             "transfer_suite_sha256": transfer_sha256,
+            "evaluation_suite": {"path": str(suite), "manifest_sha256": suite_sha256},
+            "transfer_suite": {"path": str(args.transfer), "manifest_sha256": transfer_sha256} if args.transfer else None,
+            "cross_suite": cross_suite,
+            "provenance": provenance,
             "training_config": training_config,
             "training_metrics": training_metrics,
             "evaluation_source_hashes": current_sources,
@@ -774,6 +879,11 @@ def evaluate(args):
                 "permutations": args.permutations,
                 "bootstrap_samples": args.bootstrap_samples,
                 "level_zero_ablation": args.level_zero_ablation,
+            },
+            "evaluation_flags": {
+                "out": args.out,
+                "checkpoint_kind": kind,
+                "allow_cross_suite": args.allow_cross_suite,
             },
             "temperature_fit": temperature_fit,
             "decision": decision,
@@ -796,7 +906,13 @@ def evaluate(args):
 
 
 def main():
-    evaluate(parser().parse_args())
+    ap = parser()
+    args = ap.parse_args()
+    try:
+        validate_args(args)
+    except ValueError as error:
+        ap.error(str(error))
+    evaluate(args)
 
 
 if __name__ == "__main__":

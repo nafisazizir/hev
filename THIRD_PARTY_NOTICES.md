@@ -8,6 +8,10 @@ Portions of `hev/api.py`, the augmentation helpers in `hev/data.py`, evaluation 
 
 kev is licensed under Apache-2.0. Copyright 2026 Jared Palmer. Modified Hev files retain source-level attribution where applicable.
 
+`hev/kev_model.py` contains a verbatim, unmodified copy of kev's `kev/model.py` at commit `20fa6268c8ceb226530be2fb5266ab2c36b37724` (Apache-2.0, Copyright 2026 Jared Palmer), placed after the file's `# ---- verbatim kev/model.py below this line ----` marker. The sha256 of the copied upstream file is `839dd7632ec291ac4740035c86f780f8f13da2b74b54a146ce90ff0ce8de527b`; `tests/test_kev.py` checks the vendored text against it. The copy exists only so that released kev checkpoints (for example `jaredpalmer/kev-0.6b`) can be evaluated under kev's exact token packing (`<decide>` after the options, sequential positions, kev's `head.pt` schema); Hev's own model is `hev/model.py`, which does not derive from it.
+
+`evals/decision-v4/` and `evals/transfer-v4/` are byte-for-byte copies of kev's `evals/v4/` at the same commit `20fa6268c8ceb226530be2fb5266ab2c36b37724` (provenance and digests in `evals/README.md`).
+
 ## Jev And System One
 
 The project studies the public shape of TypeSafe's Jev and implements a compatible subset of the public System One API contract. No TypeSafe source code or private implementation is included. Jev, System One and TypeSafe names belong to their owner. Hev is not affiliated with or endorsed by TypeSafe.

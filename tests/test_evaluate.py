@@ -286,3 +286,12 @@ def test_transfer_suite_requires_eval_only_and_matching_revision():
     assert len(records) == 668
     with pytest.raises(ValueError, match="different base revision"):
         validate_transfer_suite(root / "evals/decision-v2", root / "evals/transfer-v2", base, "wrong")
+
+
+def test_transfer_v4_holdout_sources_are_admitted_by_declaration():
+    root = Path(__file__).resolve().parents[1]
+    base = "Qwen/Qwen3-0.6B-Base"
+    revision = "da87bfb608c14b7cf20ba1ce41287e8de496c0cd"
+    records = validate_transfer_suite(root / "evals/decision-v4", root / "evals/transfer-v4", base, revision)
+    assert len(records) == 764
+    assert {"legacy_holdout", "composition_holdout"} <= {record["_meta"]["source"] for record in records}

@@ -62,7 +62,20 @@ Predeclared replication protocol (2026-09-20, before the run): train PointerHead
 - [x] Replicate PointerHead with predeclared seed 1. Report both seeds, never only the better one. [Aggregate](runs/m3-pointer-replication-v2/result.json)
 - [x] Direct TypeSafe evaluation of `jev-1.13.0` on decision-v2 calibration/development and transfer-v2 development, followed by a comprehensive Hev / kev / Jev aggregate. [Three-way result](runs/m3-three-way-v2-r1/result.json)
 
-### M4. Beyond the first result (pick after M2)
+### M4. Released kev-0.6b on v4 development  (predeclared 2026-09-20, in progress)
+
+Step 1 of the controlled comparison: evaluation only, no training. Protocol fixed in [D13](docs/DECISIONS.md). kev at HEAD 20fa626 ships its own `option_isolation` flag and a published 0.6B preview trained on decision-v4, so the earlier framing that only Hev has exact order invariance is out of date; see [docs/KEV.md](docs/KEV.md).
+
+- [ ] Copy `decision-v4` and `transfer-v4` byte-for-byte from kev 20fa626 (`evals/`), development-only.
+- [ ] Vendored kev inference path (`hev/kev_model.py`) and `KevPredictor` (`hev/kev.py`) so a kev checkpoint runs under kev's exact packing through Hev's evaluator.
+- [ ] Evaluator seams: `--out`, `--checkpoint-kind kev`, `--allow-cross-suite`, each recorded in `result.json`; transfer-v4 holdout sources accepted as eval-only.
+- [ ] Evaluate released kev-0.6b, Hev seed 0, Hev seed 1 on decision-v4 and transfer-v4 development; predictor sanity gate against kev's own numbers.
+- [ ] Paired aggregate with predeclared equivalence margins (`runs/m4-released-v4`), primary population = public sources.
+- [ ] RESULTS.md, README results table, KEV.md, model card updated with artifact links.
+
+Step 2 (separate milestone, not started): retrain Hev on decision-v4 with kev's v4 recipe, three seeds, so the comparison controls training data.
+
+### M5. Beyond the first result (pick after M4)
 
 Candidates, in rough order of value:
 - Extract question type: pointer over state spans, still no decoding. A capability Jev does not have.

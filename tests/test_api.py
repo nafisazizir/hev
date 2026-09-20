@@ -57,20 +57,38 @@ def test_policy_is_disjoint():
     assert not set(TRAINABLE) & set(EVAL_ONLY)
 
 
+# decision-v4/train.jsonl is the one partition kev keeps only on its Hub mirror (jaredpalmer/kev-suites); its manifest
+# entry is real but the file is deliberately not in this repo (evals/README.md). Nothing else may be absent.
+EXPECTED_ABSENT = {"decision-v4": {"train.jsonl"}}
+
+
 def test_suites_load_and_verify():
-    """Every bundled suite must checksum-verify, and eval-only sources must never appear in a train split."""
+    """Every bundled suite must checksum-verify, and eval-only sources must never appear in a train split.
+
+    Each partition listed in a manifest is either present on disk and verified through load_split, or absent and
+    listed in EXPECTED_ABSENT. load_split itself must still raise on a missing file.
+    """
+    absent = {}
     for suite in sorted((ROOT / "evals").iterdir()):
         if not (suite / "manifest.json").exists():
             continue
         m = manifest(suite)
+        assert set(m["files"]) == {"train.jsonl", "calibration.jsonl", "development.jsonl", "test.jsonl"}, suite.name
         for split in ("train", "calibration", "development"):
+            if not (suite / f"{split}.jsonl").exists():
+                absent.setdefault(suite.name, set()).add(f"{split}.jsonl")
+                with pytest.raises((FileNotFoundError, OSError)):
+                    load_split(suite, split)
+                continue
             recs = load_split(suite, split)
             assert len(recs) == m["files"][f"{split}.jsonl"]["records"]
             if split == "train":
                 srcs = {q["src"] for r in recs for q in r["questions"].values()}
                 assert not srcs & set(EVAL_ONLY), (suite.name, srcs & set(EVAL_ONLY))
+        assert (suite / "test.jsonl").exists(), suite.name
         with pytest.raises(ValueError):
             load_split(suite, "test")
+    assert absent == EXPECTED_ABSENT, absent
 
 
 def test_materialize_matches_serving_path():
